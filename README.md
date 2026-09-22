@@ -59,7 +59,18 @@ sur l'appareil tant que tu n'as pas fait l'étape 2.
 
 ---
 
-## 2. Brancher la base (Supabase)
+## 2. Brancher la base (Supabase) — *fait*
+
+Le projet existe, le schéma est passé, le RLS est actif et vérifié, l'adresse de l'app est
+autorisée, et l'URL + la clé publique sont déjà dans [`js/config.js`](js/config.js).
+Il ne te reste qu'à **te connecter par courriel** dans l'app (⋯ → Réglages), sur chaque
+appareil.
+
+Les réglages appliqués au projet vivent dans [`supabase/config.toml`](supabase/config.toml) :
+`supabase config push` n'écrit que les propriétés qui y sont déclarées, donc uniquement
+`site_url` et `additional_redirect_urls`.
+
+La procédure, pour mémoire si tu repars de zéro :
 
 1. Sur **supabase.com** → **New project**. Offre gratuite, région proche de toi
    (`eu-west-3` si tu es en France). Note le mot de passe de la base quelque part :

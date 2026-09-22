@@ -1,0 +1,16 @@
+# Configuration Supabase — volontairement minimale.
+#
+# `supabase config push` n'écrit QUE les propriétés déclarées ici et
+# laisse le reste intact. On ne déclare donc que les deux réglages dont
+# l'app a besoin, plutôt que le gabarit complet de `supabase init` :
+# celui-ci réécrirait au passage des valeurs distantes qu'on ne veut pas
+# toucher (le CLI met lui-même en garde contre ce cas).
+#
+# Sans ces deux lignes, le lien de connexion reçu par courriel renvoie
+# vers localhost:3000, le réglage d'usine de Supabase.
+
+project_id = "ziskwkobxfikcbybinny"
+
+[auth]
+site_url = "https://azotik83.github.io/chapitres/"
+additional_redirect_urls = ["https://azotik83.github.io/chapitres/"]
