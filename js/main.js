@@ -85,57 +85,93 @@ function settingsBody() {
   const cfg = sync.getConfig();
   const out = [];
 
-  /* — L'état — */
-  const lines = [];
-  if (!cfg) lines.push("Aucun projet Supabase configuré. L'app marche, tout reste sur cet appareil.");
-  else if (!s.session) lines.push("Projet configuré. Il reste à te connecter pour synchroniser.");
-  else lines.push("Connecté : " + s.session.user.email);
-  if (s.session) {
-    lines.push(s.online ? (s.syncing ? "Synchronisation en cours…" : "À jour.") : "Hors ligne. Ce que tu écris partira au retour du réseau.");
-  }
-  if (s.error) lines.push("Dernière erreur : " + s.error);
-
-  out.push(el("div", { class: "label", text: "État" }));
-  out.push(el("p", { class: "settext", text: lines.join(" ") }));
-
-  /* — Le compte — */
-  if (cfg && !s.session) {
-    const email = el("input", {
-      type: "email", class: "field", id: "setemail", placeholder: "ton@courriel.fr",
-      autocomplete: "email", "aria-label": "Ton adresse courriel",
-    });
-    const btn = el("button", { type: "button", class: "primary", text: "Recevoir le lien de connexion" });
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      try {
-        await sync.signIn(email.value);
-        toast("Lien envoyé. Ouvre-le depuis ce téléphone ou ce PC.");
-      } catch (e) {
-        toast("Échec : " + (e.message || e));
-      } finally { btn.disabled = false; }
-    });
-    out.push(el("div", { class: "label", text: "Le compte" }));
-    out.push(email, btn);
-  }
+  /* — Le compte, en premier : c'est la seule chose à faire ici. — */
+  out.push(el("div", { class: "label", text: "Ton compte" }));
 
   if (s.session) {
-    out.push(el("div", { class: "label", text: "Le compte" }));
+    out.push(el("p", { class: "settext" }, [
+      "Connecté en tant que ",
+      el("strong", { text: s.session.user.email }),
+      ". ",
+      s.online
+        ? (s.syncing ? "Synchronisation en cours…" : "Tout est à jour sur tes appareils.")
+        : "Hors ligne — ce que tu écris partira au retour du réseau.",
+    ]));
     out.push(el("button", {
       type: "button", class: "ghost", text: "Se déconnecter",
       onclick: async () => { await sync.signOut(); refreshSettings(); },
     }));
+    out.push(el("p", {
+      class: "settext dim",
+      text: "Te déconnecter n'efface rien : tes lignes restent sur cet appareil.",
+    }));
+  } else if (cfg) {
+    out.push(el("p", {
+      class: "settext",
+      text: "Tes lignes ne sont que sur cet appareil. Connecte-toi pour les retrouver partout — "
+        + "pas de mot de passe, on t'envoie un lien.",
+    }));
+    const email = el("input", {
+      type: "email", class: "field", id: "setemail", placeholder: "ton@courriel.fr",
+      autocomplete: "email", inputmode: "email", "aria-label": "Ton adresse courriel",
+    });
+    const btn = el("button", { type: "button", class: "primary", text: "Recevoir le lien de connexion" });
+    const send = async () => {
+      if (!email.value.trim()) { email.focus(); return; }
+      btn.disabled = true;
+      const was = btn.textContent;
+      btn.textContent = "Envoi…";
+      try {
+        await sync.signIn(email.value);
+        toast("Lien envoyé. Ouvre-le sur cet appareil.");
+        btn.textContent = "Lien envoyé — regarde tes courriels";
+      } catch (e) {
+        toast("Échec : " + (e.message || e));
+        btn.textContent = was;
+        btn.disabled = false;
+      }
+    };
+    btn.addEventListener("click", send);
+    email.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); send(); }
+    });
+    out.push(email, btn);
+    out.push(el("p", {
+      class: "settext dim",
+      text: "Le lien met parfois une minute à arriver, et tu ne peux en redemander "
+        + "qu'un par minute. Pense à regarder les indésirables.",
+    }));
+  } else {
+    out.push(el("p", {
+      class: "settext",
+      text: "Aucune base n'est branchée sur cet appareil. L'app marche quand même, "
+        + "mais tout reste ici. Renseigne un projet ci-dessous.",
+    }));
   }
 
-  /* — Le projet Supabase — */
+  if (s.error) {
+    out.push(el("p", { class: "settext dim", text: "Dernière erreur : " + s.error }));
+  }
+
+  /* — Tes données — */
+  out.push(el("div", { class: "label", text: "Tes données" }));
+  out.push(el("p", {
+    class: "settext",
+    text: store.liveEntries().length + " lignes et " + store.liveChapters().length
+      + " chapitres sur cet appareil.",
+  }));
+  out.push(el("button", { type: "button", class: "ghost", text: "Exporter en JSON", onclick: exportJSON }));
+
+  /* — Le projet Supabase, replié : il est déjà renseigné. — */
   const url = el("input", {
     type: "url", class: "field", id: "seturl", placeholder: "https://xxxx.supabase.co",
     value: cfg ? cfg.url : "", "aria-label": "URL du projet Supabase", autocomplete: "off",
   });
   const key = el("input", {
-    type: "text", class: "field mono", id: "setkey", placeholder: "la clé anon public",
-    value: cfg ? cfg.key : "", "aria-label": "Clé anon Supabase", autocomplete: "off",
+    type: "text", class: "field mono", id: "setkey", placeholder: "la clé publique",
+    value: cfg ? cfg.key : "", "aria-label": "Clé publique Supabase", autocomplete: "off",
   });
-  const save = el("button", { type: "button", class: "primary", text: "Enregistrer et connecter" });
+  const save = el("button", { type: "button", class: "primary", text: "Enregistrer" });
   save.addEventListener("click", async () => {
     try {
       sync.setConfig(url.value, key.value);
@@ -146,22 +182,33 @@ function settingsBody() {
       toast("Échec : " + (e.message || e));
     }
   });
-  out.push(el("div", { class: "label", text: "Le projet Supabase" }));
-  out.push(url, key, save);
-  out.push(el("p", {
-    class: "settext dim",
-    text: "La clé « anon » est publique par conception : ce sont les politiques RLS de la base qui protègent tes données, pas le secret de cette clé.",
-  }));
-
-  /* — L'export — */
-  out.push(el("div", { class: "label", text: "Tes données" }));
-  out.push(el("button", { type: "button", class: "ghost", text: "Exporter en JSON", onclick: exportJSON }));
-  out.push(el("p", {
-    class: "settext dim",
-    text: store.liveEntries().length + " lignes, " + store.liveChapters().length + " chapitres sur cet appareil.",
-  }));
+  out.push(el("details", { class: "fold" }, [
+    el("summary", { text: "La base de données" }),
+    el("p", {
+      class: "settext dim",
+      text: "Déjà renseignée. À ne changer que si tu veux pointer cet appareil "
+        + "vers un autre projet Supabase. La clé publique est faite pour être "
+        + "publique : ce sont les politiques RLS de la base qui protègent tes "
+        + "lignes, pas le secret de cette clé.",
+    }),
+    url, key, save,
+  ]));
 
   return out;
+}
+
+/* ── La ligne « connecte-toi », tant qu'il n'y a pas de compte ─── */
+
+function renderSignin() {
+  const bar = document.getElementById("signinbar");
+  if (!bar) return;
+  const s = sync.status;
+  // Une fois connecté, elle disparaît pour de bon : rien ne s'affiche
+  // tant que ça n'a pas de raison d'être là.
+  if (s.session) { bar.hidden = true; return; }
+  document.getElementById("signintext").textContent =
+    sync.getConfig() ? "Tes lignes restent sur cet appareil." : "Aucune base branchée.";
+  bar.hidden = false;
 }
 
 function exportJSON() {
@@ -204,9 +251,11 @@ async function boot() {
   document.getElementById("tab-chapters").addEventListener("click", () => showTab("chapters"));
   document.getElementById("tab-money").addEventListener("click", () => showTab("money"));
   document.getElementById("moremenu").addEventListener("click", openSettings);
+  document.getElementById("signinbtn").addEventListener("click", openSettings);
 
   store.onChange(paint);
-  sync.onStatus(refreshSettings);
+  sync.onStatus(() => { refreshSettings(); renderSignin(); });
+  renderSignin();
 
   let start = "today";
   try { start = sessionStorage.getItem("chapitres.tab") || "today"; } catch { /* ignoré */ }

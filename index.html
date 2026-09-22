@@ -71,6 +71,13 @@
 
   <!-- ── Le bas de l'écran : message et saisie ───────────────── -->
   <div class="dock">
+    <!-- Tant qu'aucun compte n'est branché, l'app le dit une fois, sans
+         insister. Une fois connecté, cette ligne disparaît pour de bon. -->
+    <div class="signin" id="signinbar" hidden>
+      <span class="signintext" id="signintext"></span>
+      <button type="button" class="signinbtn" id="signinbtn">Se connecter</button>
+    </div>
+
     <div id="toasthost"></div>
 
     <form class="composer" id="composer" autocomplete="off">
