@@ -18,11 +18,16 @@ EXPEDITEUR = "onboarding@resend.dev"
 HOTE = "smtp.resend.com"
 UTILISATEUR = "resend"
 
-if len(sys.argv) < 2:
-    print("Usage : python supabase/test-smtp.py re_ta_cle")
-    raise SystemExit(1)
+if len(sys.argv) >= 2:
+    CLE = sys.argv[1].strip()
+else:
+    # Saisie masquee : la cle n'entre pas dans l'historique du shell.
+    import getpass
+    CLE = getpass.getpass("Colle ta cle Resend (elle ne s'affichera pas) : ").strip()
 
-CLE = sys.argv[1].strip()
+if not CLE:
+    print("Aucune cle fournie.")
+    raise SystemExit(1)
 print("cle : %d caracteres, prefixe %s\n" % (len(CLE), CLE[:6]))
 
 
