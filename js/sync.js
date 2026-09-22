@@ -170,12 +170,18 @@ export async function sync() {
   status.error = null;
   emit();
   try {
-    // Les chapitres d'abord : une ligne référence son chapitre.
+    // On TÉLÉCHARGE avant d'envoyer. Sur un appareil qui vient de se
+    // connecter, l'inverse ferait partir son chapitre local sans qu'il
+    // sache qu'un chapitre est déjà ouvert ailleurs — et l'envoi
+    // échouerait, en bloquant tout le reste derrière lui.
+    await pullTable("chapters");
+    await pullTable("entries");
+    await store.reconcileOpenChapters();
+
+    // Les chapitres d'abord à l'envoi : une ligne référence son chapitre.
     await pushTable("chapters");
     await pushTable("entries");
     await pushPhotos();
-    await pullTable("chapters");
-    await pullTable("entries");
     await fetchMissingPhotos();
     status.lastSync = Date.now();
   } catch (e) {

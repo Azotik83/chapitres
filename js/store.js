@@ -271,6 +271,39 @@ export async function closeChapter(id, { name, line, photoPath }) {
 
 export const chapterDays = (c) => daysBetween(c.start_date, c.end_date);
 
+// Deux chapitres ouverts ne peuvent pas coexister.
+//
+// Le cas qui arrive pour de vrai : tu installes l'app sur un deuxième
+// appareil, tu écris une ligne avant de te connecter. Cet appareil ne
+// sait rien du chapitre déjà ouvert ailleurs, il en crée donc un à lui.
+// À la connexion, on se retrouve avec deux chapitres en cours.
+//
+// On garde le plus ancien — et à égalité celui dont l'identifiant est le
+// plus petit, pour que tous les appareils prennent la MÊME décision sans
+// se parler — et on replie l'autre dedans : ses lignes changent de
+// chapitre, lui passe en supprimé. Rien n'est perdu.
+export async function reconcileOpenChapters() {
+  const open = liveChapters().filter((c) => !c.end_date);
+  if (open.length < 2) return 0;
+
+  open.sort((a, b) =>
+    a.start_date < b.start_date ? -1 :
+    a.start_date > b.start_date ? 1 :
+    a.id < b.id ? -1 : 1);
+
+  const keep = open[0];
+  let moved = 0;
+  for (const dup of open.slice(1)) {
+    for (const e of liveEntries()) {
+      if (e.chapter_id !== dup.id) continue;
+      await saveEntry({ ...e, chapter_id: keep.id });
+      moved++;
+    }
+    await saveChapter({ ...dup, deleted_at: nowIso() });
+  }
+  return moved;
+}
+
 /* ── Photos ───────────────────────────────────────────────────── */
 
 export async function putPhoto(path, blob) {

@@ -46,8 +46,18 @@ create index if not exists entries_user_updated_idx  on public.entries  (user_id
 create index if not exists entries_chapter_idx       on public.entries  (chapter_id);
 create index if not exists chapters_user_updated_idx on public.chapters (user_id, updated_at);
 
-create unique index if not exists chapters_user_n_idx on public.chapters (user_id, n)
-  where deleted_at is null;
+-- Volontairement NON unique sur (user_id, n).
+--
+-- Un index unique paraissait protéger la numérotation des chapitres,
+-- mais il transformait un cas rare — deux appareils qui numérotent en
+-- même temps hors ligne — en panne totale : l'envoi des chapitres
+-- échoue, et comme une ligne référence son chapitre, l'envoi des
+-- lignes est bloqué derrière, indéfiniment.
+--
+-- Un numéro en double est un défaut d'affichage ; une synchro coincée
+-- est une perte de données. L'app réconcilie les chapitres ouverts en
+-- double côté client (store.reconcileOpenChapters).
+create index if not exists chapters_user_n_idx on public.chapters (user_id, n);
 
 -- ── updated_at, tenu par la base ────────────────────────────────
 -- C'est ce champ que la synchro lit pour ne retélécharger que le delta.

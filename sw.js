@@ -9,7 +9,7 @@
 // dit aux téléphones déjà installés d'aller chercher la nouvelle.
 // ═══════════════════════════════════════════════════════════════
 
-const VERSION = "chapitres-v4";
+const VERSION = "chapitres-v5";
 
 const SHELL = [
   "./",
