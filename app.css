@@ -91,9 +91,16 @@ img{max-width:100%}
   background:var(--surface);
   position:relative;
 }
-@media (min-width:600px){ .app{border-inline:1px solid var(--rule)} }
+/* Entre le téléphone et le bureau : la colonne reste une colonne, mais
+   on la borde pour qu'elle ne flotte pas dans le vide. */
+@media (min-width:600px) and (max-width:899px){
+  .app{border-inline:1px solid var(--rule)}
+}
 
-.stage{flex:1 1 auto;position:relative;min-height:0}
+/* Sur téléphone l'ordre visuel est : la scène, la saisie, les onglets. */
+.stage{order:1;flex:1 1 auto;position:relative;min-height:0}
+.dock{order:2}
+.tabs{order:3}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column}
 .scroll{
   flex:1 1 auto;
@@ -202,8 +209,6 @@ img{max-width:100%}
 .dock{
   flex:none;
   background:var(--surface);
-  border-top:1px solid var(--rule);
-  padding-bottom:var(--safe-b);
 }
 #toasthost{padding:0 var(--pad)}
 
@@ -234,7 +239,9 @@ img{max-width:100%}
 
 /* ── La barre de saisie ───────────────────────────────────────── */
 
-.composer{padding:10px var(--pad) 8px}
+/* Le filet est porté par la barre de saisie, pas par le dock : sur les
+   onglets sans saisie, il n'y a donc aucun trait orphelin. */
+.composer{padding:10px var(--pad) 8px;border-top:1px solid var(--rule)}
 .editbar{display:flex;align-items:center;gap:10px;min-height:34px;padding-bottom:6px}
 .editbar .k{
   font-family:var(--mono);font-size:var(--label);
@@ -277,7 +284,14 @@ img{max-width:100%}
 /* ── Les trois onglets ────────────────────────────────────────── */
 /* Une icône n'est jamais seule : icône + mot. */
 
-.tabs{display:flex;border-top:1px solid var(--rule)}
+.tabs{
+  flex:none;
+  display:flex;
+  border-top:1px solid var(--rule);
+  background:var(--surface);
+  padding-bottom:var(--safe-b);
+}
+.raillogo{display:none}
 .tab{
   flex:1;min-height:56px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -590,4 +604,119 @@ img{max-width:100%}
   @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   @keyframes slide{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
   @keyframes drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Le bureau, à partir de 900 px.
+
+   Les onglets quittent le bas de l'écran pour un rail à gauche : la
+   règle « tout ce qui se touche est dans le tiers bas » vient de la
+   zone du pouce sur un téléphone tenu d'une main, et ne veut rien
+   dire avec une souris. Ils restent trois, et gardent icône + mot.
+
+   La colonne de lecture, elle, ne s'élargit pas : une ligne de texte
+   de 1400 px ne se lit pas. On centre 620 px dans la largeur
+   disponible — sauf la grille de photos, qui gagne à respirer.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width:900px){
+  :root{--pad:24px}
+
+  .app{
+    max-width:none;
+    display:grid;
+    grid-template-columns:238px minmax(0,1fr);
+    grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:
+      "rail stage"
+      "rail dock";
+  }
+  .stage{grid-area:stage}
+  .dock{grid-area:dock}
+
+  /* ── Le rail ─────────────────────────────────────────────── */
+  .tabs{
+    grid-area:rail;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:flex-start;
+    gap:2px;
+    padding:14px 12px;
+    border-top:0;
+    border-inline-end:1px solid var(--rule);
+    background:var(--bg);
+  }
+  .raillogo{
+    display:block;
+    font-family:var(--mono);
+    font-size:var(--label);
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--text3);
+    padding:10px 12px 18px;
+  }
+  .tab{
+    flex:none;
+    flex-direction:row;
+    justify-content:flex-start;
+    align-items:center;
+    gap:12px;
+    min-height:48px;
+    padding:0 12px;
+    border-radius:10px;
+    font-size:14.5px;
+  }
+  .tab svg{width:19px;height:19px;flex:none}
+  .tab.on{background:var(--surface);color:var(--accent)}
+
+  /* ── Une colonne de lecture centrée, filets pleine largeur ── */
+  #screen-today .top,   #screen-today .scroll,
+  #screen-money .top,   #screen-money .scroll,
+  .composer, #toasthost{
+    padding-inline:max(var(--pad), calc((100% - 620px) / 2));
+  }
+  #screen-chapters .top, #screen-chapters .scroll{
+    padding-inline:max(var(--pad), calc((100% - 1040px) / 2));
+  }
+  .pagebar, .pagebody{
+    padding-inline:max(var(--pad), calc((100% - 720px) / 2));
+  }
+
+  .grid{grid-template-columns:repeat(4,1fr);gap:20px 16px}
+  .bigwrap{padding-top:38px}
+  .bignum{font-size:44px}
+  .chart{height:220px}
+
+  /* ── Les pages poussées gardent le rail visible ───────────── */
+  .page.modal{
+    inset:6vh 0;
+    max-width:660px;
+    border:1px solid var(--rule);
+    border-radius:16px;
+    overflow:hidden;
+    /* Le voile est peint par l'ombre : aucun élément en plus. */
+    box-shadow:0 0 0 100vmax var(--scrim), 0 24px 70px var(--shadow);
+  }
+  .page.modal .pagebar{padding-inline:var(--pad)}
+  .page.modal .pagebody{padding-inline:var(--pad)}
+}
+
+/* ── Ce que la souris permet et le doigt non ─────────────────── */
+
+@media (hover:hover) and (pointer:fine){
+  .row.task:hover{background:var(--surface2)}
+  .tagrow:hover{background:var(--surface2)}
+  .tab:hover{color:var(--text2)}
+  .tab.on:hover{color:var(--accent)}
+  .sheet button:hover{background:var(--surface2)}
+  .cell:hover .cellart{outline:2px solid var(--rule);outline-offset:2px}
+  .ghost:hover{border-color:var(--text3)}
+  .more:hover{background:var(--surface2)}
+}
+
+/* ── Écran large et bas : le clavier ne doit pas tout manger ── */
+@media (min-width:900px) and (max-height:620px){
+  .bigwrap{padding-top:18px}
+  .bignum{font-size:34px}
+  .chart{height:150px}
 }

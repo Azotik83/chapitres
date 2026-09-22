@@ -19,6 +19,13 @@ Supabase. Elle s'installe sur l'écran d'accueil et s'ouvre sans réseau.
 
 Et : hors-ligne complet, installation sur le téléphone, synchro entre tous tes appareils.
 
+**Sur téléphone** : une colonne, les trois onglets en bas, sous le pouce.
+**Sur ordinateur** (à partir de 900 px) : les onglets passent en rail à gauche, la grille de
+chapitres s'ouvre à quatre colonnes, et la colonne de lecture reste centrée à 620 px — une
+ligne de texte de 1400 px de large ne se lit pas. La règle « tout ce qui se touche est dans
+le tiers bas » du plan vient de la zone du pouce sur un téléphone ; elle ne veut rien dire
+avec une souris.
+
 ---
 
 ## 1. Mettre la page en ligne (GitHub Pages)
