@@ -9,7 +9,7 @@
 // dit aux téléphones déjà installés d'aller chercher la nouvelle.
 // ═══════════════════════════════════════════════════════════════
 
-const VERSION = "raptat-v9";
+const VERSION = "raptat-v10";
 
 const SHELL = [
   "./",

@@ -216,6 +216,18 @@ C'est ce qui garantit qu'aucune synchronisation ne peut créer de conflit sur le
 
 ### La synchro
 
+Trois choses réveillent la synchro, parce qu'aucune n'est fiable seule : le temps réel
+(une écriture sur un appareil pousse l'autre à se mettre à jour), les événements de retour
+à l'écran (`visibilitychange`, `focus`, `pageshow` — selon les navigateurs et selon la
+façon dont iOS rend la main à une app installée, ce n'est jamais le même qui tombe), et un
+**battement de 45 secondes** tant que l'app est à l'écran. Le battement s'arrête dès qu'elle
+passe en arrière-plan, et il ne crée aucune écriture : il vide l'outbox de ce que tu as déjà
+écrit, et télécharge le reste.
+
+La synchro ne se bloque jamais sur `navigator.onLine` : il ment dans les deux sens, et il
+peut rester à `false` après le réveil d'une app iOS gelée — l'événement `online` ne se
+déclenchant que sur un *changement* d'état, la synchro ne repartait alors jamais.
+
 Écriture locale d'abord, toujours. Chaque mutation marque la ligne `dirty` dans
 IndexedDB ; une seule boucle d'envoi tourne à la fois et vide l'outbox quand elle peut.
 Le rapatriement ne demande que le delta (`updated_at > dernier passage`), et `updated_at`

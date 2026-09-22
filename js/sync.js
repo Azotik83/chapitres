@@ -179,7 +179,18 @@ export async function start() {
     wired = true;
     addEventListener("online", () => { status.online = true; emit(); sync(); });
     addEventListener("offline", () => { status.online = false; emit(); });
-    addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+    // visibilitychange ne suffit pas : selon les navigateurs et selon la
+    // facon dont iOS rend la main a une app installee, c'est tantot lui,
+    // tantot focus, tantot pageshow qui tombe. On ecoute les trois — la
+    // synchro est a un seul exemplaire, les doublons ne coutent rien.
+    // sur document, la ou l'evenement est reellement emis — pas sur
+    // window, ou il n'arrive que par remontee.
+    document.addEventListener("visibilitychange", () => {
+      reglerBattement();
+      if (!document.hidden) { relancerTempsReel(); sync(); }
+    });
+    addEventListener("focus", () => { relancerTempsReel(); sync(); });
+    addEventListener("pageshow", () => { relancerTempsReel(); sync(); });
     store.setPushHook(() => sync());
   }
 
@@ -199,6 +210,7 @@ async function onSession(session) {
   store.state.userId = session.user.id;
   await store.adoptOrphans(session.user.id);
   if (changed) subscribeLive(session.user.id);
+  reglerBattement();
   sync();
 }
 
@@ -230,7 +242,12 @@ let running = false;
 let queued = false;
 
 export async function sync() {
-  if (!status.session || !status.online) return;
+  if (!status.session) return;
+  // On NE bloque PAS sur navigator.onLine. Il ment dans les deux sens,
+  // et surtout il peut rester a false apres le reveil d'une app iOS
+  // gelee : la synchro ne repartait alors jamais, puisque l'evenement
+  // « online » ne se declenche que sur un CHANGEMENT d'etat. Un essai
+  // rate ne coute rien et l'echec est rattrape plus bas.
   if (running) { queued = true; return; }
   running = true;
   status.syncing = true;
@@ -253,11 +270,44 @@ export async function sync() {
     status.lastSync = Date.now();
   } catch (e) {
     status.error = e && e.message ? e.message : String(e);
+    status.online = navigator.onLine;
   } finally {
     running = false;
     status.syncing = false;
+    if (!status.error) status.online = true;   // ca vient de passer
     emit();
     if (queued) { queued = false; sync(); }
+  }
+}
+
+/* ── Le battement, tant que l'app est a l'ecran ───────────────── */
+// Le temps reel et les evenements de visibilite couvrent le cas normal,
+// mais aucun des deux n'est garanti : une socket meurt en silence quand
+// iOS gele l'app, et un reveil ne redeclenche pas toujours un evenement.
+// Ce battement est le filet qui fait converger deux appareils sans rien
+// toucher. Il ne cree aucune ecriture : il vide l'outbox de ce que tu as
+// deja ecrit, et telecharge le reste.
+
+const BATTEMENT = 45000;
+let battement = null;
+
+function reglerBattement() {
+  const doitBattre = !!status.session && document.visibilityState === "visible";
+  if (doitBattre && !battement) {
+    battement = setInterval(() => { relancerTempsReel(); sync(); }, BATTEMENT);
+  } else if (!doitBattre && battement) {
+    clearInterval(battement);
+    battement = null;
+  }
+}
+
+// Une socket coupee ne se voit pas : on redemande l'abonnement si le
+// canal n'est plus en etat de marche.
+function relancerTempsReel() {
+  if (!status.session || !channel) return;
+  const etat = typeof channel.state === "string" ? channel.state : null;
+  if (etat && etat !== "joined" && etat !== "joining") {
+    subscribeLive(status.session.user.id);
   }
 }
 
