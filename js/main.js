@@ -138,9 +138,49 @@ function settingsBody() {
     out.push(email, btn);
     out.push(el("p", {
       class: "settext dim",
-      text: "Le lien met parfois une minute à arriver, et tu ne peux en redemander "
-        + "qu'un par minute. Pense à regarder les indésirables.",
+      text: "Le lien met parfois une minute à arriver, et l'envoi est limité à "
+        + "deux courriels par heure. Pense à regarder les indésirables.",
     }));
+
+    /* — Coller le lien : indispensable pour une app installée — */
+    const paste = el("input", {
+      type: "url", class: "field mono", id: "setlink",
+      placeholder: "https://…", "aria-label": "Le lien reçu par courriel",
+      autocomplete: "off", autocapitalize: "off", spellcheck: "false",
+    });
+    const useLink = el("button", { type: "button", class: "ghost", text: "Me connecter avec ce lien" });
+    const apply = async () => {
+      if (!paste.value.trim()) { paste.focus(); return; }
+      useLink.disabled = true;
+      const was = useLink.textContent;
+      useLink.textContent = "Vérification…";
+      try {
+        await sync.signInWithLink(paste.value);
+        toast("Connecté.");
+        refreshSettings();
+      } catch (e) {
+        toast("Échec : " + (e.message || e));
+        useLink.textContent = was;
+        useLink.disabled = false;
+      }
+    };
+    useLink.addEventListener("click", apply);
+    paste.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); apply(); }
+    });
+
+    out.push(el("details", { class: "fold" }, [
+      el("summary", { text: "Le lien s'ouvre ailleurs ?" }),
+      el("p", {
+        class: "settext dim",
+        text: "Si tu as ajouté l'app à ton écran d'accueil, le lien du courriel "
+          + "s'ouvrira dans Safari — et une app installée ne partage pas son "
+          + "stockage avec Safari, donc elle resterait déconnectée. Dans le "
+          + "courriel, appuie longuement sur le lien, choisis « Copier le lien », "
+          + "et colle-le ici.",
+      }),
+      paste, useLink,
+    ]));
   } else {
     out.push(el("p", {
       class: "settext",

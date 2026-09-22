@@ -89,6 +89,50 @@ export async function signIn(email) {
   if (error) throw error;
 }
 
+// Se connecter en collant le lien reçu par courriel.
+//
+// C'est la seule façon de connecter une app installée sur l'écran
+// d'accueil d'un iPhone : le lien s'ouvre forcément dans Safari, et une
+// app installée a un stockage séparé de Safari. La session atterrirait
+// donc à côté, et l'app resterait déconnectée indéfiniment.
+export async function signInWithLink(raw) {
+  const c = client();
+  if (!c) throw new Error("Aucune base n'est branchée sur cet appareil.");
+
+  let u;
+  try { u = new URL(String(raw).trim()); }
+  catch { throw new Error("Colle l'adresse complète du lien, en entier."); }
+
+  // Forme 1 — l'adresse d'arrivée, qui porte déjà les jetons.
+  const hash = new URLSearchParams(u.hash.replace(/^#/, ""));
+  const at = hash.get("access_token");
+  const rt = hash.get("refresh_token");
+  if (at && rt) {
+    const { error } = await c.auth.setSession({ access_token: at, refresh_token: rt });
+    if (error) throw error;
+    return;
+  }
+
+  // Forme 2 — le lien du courriel, qui porte un jeton à faire vérifier.
+  const token = u.searchParams.get("token") || u.searchParams.get("token_hash");
+  if (!token) throw new Error("Ce lien ne contient pas de jeton de connexion.");
+
+  const declared = u.searchParams.get("type");
+  const types = [];
+  if (declared) types.push(declared);
+  for (const t of ["magiclink", "email", "signup", "recovery", "invite"]) {
+    if (!types.includes(t)) types.push(t);
+  }
+
+  let last = null;
+  for (const type of types) {
+    const { error } = await c.auth.verifyOtp({ token_hash: token, type });
+    if (!error) return;
+    last = error;
+  }
+  throw last || new Error("Lien refusé : il a déjà servi, ou il a expiré.");
+}
+
 export async function signOut() {
   const c = client();
   if (c) await c.auth.signOut();

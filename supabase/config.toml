@@ -14,3 +14,14 @@ project_id = "ziskwkobxfikcbybinny"
 [auth]
 site_url = "https://azotik83.github.io/chapitres/"
 additional_redirect_urls = ["https://azotik83.github.io/chapitres/"]
+
+# NOTE — le gabarit de courriel (supabase/templates/magic_link.html)
+# est prêt mais NON déclaré ici, volontairement : Supabase refuse toute
+# modification de gabarit sur l'offre gratuite tant qu'on utilise son
+# service d'envoi intégré. Le jour où un SMTP personnalisé est branché,
+# décommenter les trois lignes ci-dessous suffit à envoyer un code en
+# plus du lien.
+#
+# [auth.email.template.magic_link]
+# subject = "Ton code de connexion"
+# content_path = "./supabase/templates/magic_link.html"

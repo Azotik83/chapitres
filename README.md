@@ -1,6 +1,6 @@
-# Chapitres
+# RAPTAT
 
-Une app pour écrire une ligne par jour, découper le temps en chapitres que tu fermes
+Anciennement « Chapitres ». Une app pour écrire une ligne par jour, découper le temps en chapitres que tu fermes
 toi-même, et retrouver tout ça dans une grille de photos. Trois écrans, une barre de
 saisie, rien d'autre.
 
