@@ -790,3 +790,11 @@ img{max-width:100%}
   .signinbtn:hover{background:var(--surface)}
   .fold > summary:hover{color:var(--text2)}
 }
+
+/* Le code du courriel : gros, espacé, aligné — on le recopie à l'œil. */
+.field.code{
+  font-size:22px;
+  letter-spacing:.28em;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+}

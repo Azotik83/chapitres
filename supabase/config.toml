@@ -1,27 +1,55 @@
 # Configuration Supabase — volontairement minimale.
 #
 # `supabase config push` n'écrit QUE les propriétés déclarées ici et
-# laisse le reste intact. On ne déclare donc que les deux réglages dont
-# l'app a besoin, plutôt que le gabarit complet de `supabase init` :
-# celui-ci réécrirait au passage des valeurs distantes qu'on ne veut pas
-# toucher (le CLI met lui-même en garde contre ce cas).
+# laisse le reste intact. On ne déclare donc que ce dont l'app a besoin,
+# plutôt que le gabarit complet de `supabase init` : celui-ci réécrirait
+# au passage des valeurs distantes qu'on ne veut pas toucher (le CLI met
+# lui-même en garde contre ce cas).
 #
-# Sans ces deux lignes, le lien de connexion reçu par courriel renvoie
-# vers localhost:3000, le réglage d'usine de Supabase.
+# ATTENTION — TOUT `config push` DOIT PORTER LA VARIABLE SMTP_PASSWORD :
+#
+#      SMTP_PASSWORD="re_xxx" npx --yes supabase@latest config push \
+#        --project-ref ziskwkobxfikcbybinny --yes
+#
+#    Sans elle, le CLI saute silencieusement tout le bloc SMTP. Il ne
+#    casse rien, mais il ne met rien a jour non plus.
 
 project_id = "ziskwkobxfikcbybinny"
 
 [auth]
+# Sans ces deux lignes, le lien de connexion recu par courriel renvoie
+# vers localhost:3000, le reglage d'usine de Supabase.
 site_url = "https://azotik83.github.io/chapitres/"
 additional_redirect_urls = ["https://azotik83.github.io/chapitres/"]
 
-# NOTE — le gabarit de courriel (supabase/templates/magic_link.html)
-# est prêt mais NON déclaré ici, volontairement : Supabase refuse toute
-# modification de gabarit sur l'offre gratuite tant qu'on utilise son
-# service d'envoi intégré. Le jour où un SMTP personnalisé est branché,
-# décommenter les trois lignes ci-dessous suffit à envoyer un code en
-# plus du lien.
+[auth.rate_limit]
+# Le service d'envoi integre de Supabase plafonne a 2 courriels par
+# heure, ce qui suffit a bloquer une simple installation sur un second
+# appareil. Avec un expediteur a nous, on respire.
+email_sent = 30
+
+[auth.email.smtp]
+# Resend, offre gratuite : 3 000 courriels par mois, aucun domaine a
+# posseder. L'expediteur onboarding@resend.dev ne peut ecrire qu'a
+# l'adresse du compte Resend — ce qui tombe bien, l'app n'ecrit jamais
+# qu'a toi.
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(SMTP_PASSWORD)"
+admin_email = "onboarding@resend.dev"
+sender_name = "RAPTAT"
+
+[auth.email.template.magic_link]
+# Le courriel porte A LA FOIS un lien et un code a taper.
 #
-# [auth.email.template.magic_link]
-# subject = "Ton code de connexion"
-# content_path = "./supabase/templates/magic_link.html"
+# Le lien seul ne peut pas connecter une app installee sur l'ecran
+# d'accueil d'un iPhone : il s'ouvre dans Safari, et une app installee a
+# un stockage separe de Safari. La session atterrit donc au mauvais
+# endroit. Le code, lui, se tape dans l'app, ou qu'elle soit.
+#
+# Modifier un gabarit exige un SMTP personnalise : Supabase le refuse
+# tant qu'on utilise son service d'envoi integre.
+subject = "Ton code de connexion RAPTAT"
+content_path = "./supabase/templates/magic_link.html"

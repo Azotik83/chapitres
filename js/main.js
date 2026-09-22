@@ -115,7 +115,26 @@ function settingsBody() {
       type: "email", class: "field", id: "setemail", placeholder: "ton@courriel.fr",
       autocomplete: "email", inputmode: "email", "aria-label": "Ton adresse courriel",
     });
-    const btn = el("button", { type: "button", class: "primary", text: "Recevoir le lien de connexion" });
+    const btn = el("button", { type: "button", class: "primary", text: "Recevoir mon code" });
+
+    // Le code reçu par courriel : visible seulement une fois l'envoi
+    // parti, pour ne pas montrer un champ qui n'a encore aucun sens.
+    const code = el("input", {
+      type: "text", class: "field mono code", id: "setcode",
+      placeholder: "le code du courriel", "aria-label": "Le code reçu par courriel",
+      inputmode: "numeric", autocomplete: "one-time-code",
+      autocapitalize: "off", spellcheck: "false",
+    });
+    const codeBtn = el("button", { type: "button", class: "primary", text: "Me connecter" });
+    const codeBox = el("div", { hidden: true }, [
+      el("p", {
+        class: "settext",
+        text: "Tape le code du courriel ici — c'est le chemin qui marche partout, "
+          + "y compris dans l'app installée sur ton écran d'accueil.",
+      }),
+      code, codeBtn,
+    ]);
+
     const send = async () => {
       if (!email.value.trim()) { email.focus(); return; }
       btn.disabled = true;
@@ -123,23 +142,48 @@ function settingsBody() {
       btn.textContent = "Envoi…";
       try {
         await sync.signIn(email.value);
-        toast("Lien envoyé. Ouvre-le sur cet appareil.");
-        btn.textContent = "Lien envoyé — regarde tes courriels";
+        toast("Courriel envoyé.");
+        btn.textContent = "Renvoyer un code";
+        btn.disabled = false;
+        codeBox.hidden = false;
+        code.focus();
       } catch (e) {
         toast("Échec : " + (e.message || e));
         btn.textContent = was;
         btn.disabled = false;
       }
     };
+
+    const useCode = async () => {
+      if (!code.value.trim()) { code.focus(); return; }
+      codeBtn.disabled = true;
+      const was = codeBtn.textContent;
+      codeBtn.textContent = "Vérification…";
+      try {
+        await sync.signInWithCode(email.value, code.value);
+        toast("Connecté.");
+        refreshSettings();
+      } catch (e) {
+        toast("Échec : " + (e.message || e));
+        codeBtn.textContent = was;
+        codeBtn.disabled = false;
+      }
+    };
+
     btn.addEventListener("click", send);
     email.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); send(); }
     });
-    out.push(email, btn);
+    codeBtn.addEventListener("click", useCode);
+    code.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); useCode(); }
+    });
+
+    out.push(email, btn, codeBox);
     out.push(el("p", {
       class: "settext dim",
-      text: "Le lien met parfois une minute à arriver, et l'envoi est limité à "
-        + "deux courriels par heure. Pense à regarder les indésirables.",
+      text: "Le courriel porte un code et un lien. Le code marche partout ; "
+        + "le lien seulement si tu l'ouvres sur cet appareil-ci.",
     }));
 
     /* — Coller le lien : indispensable pour une app installée — */

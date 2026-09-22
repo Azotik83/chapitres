@@ -108,6 +108,33 @@ automatiquement.
 
 ---
 
+## 2 bis. L'expéditeur de courriel (Resend)
+
+Le service d'envoi intégré de Supabase plafonne à **2 courriels par heure** et
+interdit de modifier les gabarits sur l'offre gratuite — donc pas de code à taper,
+seulement un lien. Or un lien ne peut pas connecter une app installée sur l'écran
+d'accueil d'un iPhone : il s'ouvre dans Safari, dont le stockage est séparé.
+
+Resend règle les deux : 3 000 courriels par mois, gratuit, **sans posséder de domaine**.
+L'expéditeur `onboarding@resend.dev` ne peut écrire qu'à l'adresse du compte Resend —
+ce qui tombe bien, l'app n'écrit jamais qu'à toi.
+
+1. Crée un compte sur **resend.com** (connexion possible avec GitHub).
+2. **API Keys** → *Create API Key*, droits **Sending access**. Copie la clé `re_…`.
+3. Dans ce dossier, lance **une seule commande**, en remplaçant la clé :
+
+   ```bash
+   SMTP_PASSWORD="re_ta_cle" npx --yes supabase@latest config push --project-ref ziskwkobxfikcbybinny --yes
+   ```
+
+Elle applique d'un coup : l'expéditeur, la limite remontée à 30 courriels par heure,
+et le gabarit qui envoie **un code en plus du lien**.
+
+> Toute commande `config push` ultérieure doit porter `SMTP_PASSWORD`. Sans elle le CLI
+> saute silencieusement le bloc SMTP : il ne casse rien, mais ne met rien à jour non plus.
+
+---
+
 ## 3. L'installer sur le téléphone
 
 - **iPhone** : ouvre l'adresse dans **Safari** → bouton Partager → **Sur l'écran d'accueil**.

@@ -89,6 +89,24 @@ export async function signIn(email) {
   if (error) throw error;
 }
 
+// Se connecter avec le code reçu par courriel.
+//
+// C'est le chemin le plus court sur un téléphone : rien à ouvrir, rien
+// à copier, on tape le code dans l'app — donc la session atterrit dans
+// l'app, y compris quand elle est installée sur l'écran d'accueil.
+export async function signInWithCode(email, code) {
+  const c = client();
+  if (!c) throw new Error("Aucune base n'est branchée sur cet appareil.");
+  const token = String(code).replace(/\s+/g, "");
+  if (!token) throw new Error("Tape le code reçu par courriel.");
+  const { error } = await c.auth.verifyOtp({
+    email: String(email).trim(),
+    token,
+    type: "email",
+  });
+  if (error) throw error;
+}
+
 // Se connecter en collant le lien reçu par courriel.
 //
 // C'est la seule façon de connecter une app installée sur l'écran
