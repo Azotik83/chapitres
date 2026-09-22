@@ -17,6 +17,19 @@
 project_id = "ziskwkobxfikcbybinny"
 
 [auth]
+# LE POINT DE SECURITE QUI COMPTE.
+#
+# Par defaut Supabase laisse n'importe qui creer un compte. Le site
+# etant public, toute personne qui trouve l'adresse pouvait donc
+# s'inscrire sur TON projet : tes lignes restaient inaccessibles grace
+# au RLS, mais ton quota, ton stockage et tes courriels, eux, etaient
+# a sa disposition.
+#
+# On ferme. Ton compte existe deja, la connexion continue de marcher
+# sur tous tes appareils. Pour rouvrir un jour : repasser a true et
+# refaire un `config push`.
+enable_signup = false
+
 # Sans ces deux lignes, le lien de connexion recu par courriel renvoie
 # vers localhost:3000, le reglage d'usine de Supabase.
 site_url = "https://azotik83.github.io/chapitres/"

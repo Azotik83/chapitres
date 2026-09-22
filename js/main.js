@@ -246,36 +246,33 @@ function settingsBody() {
   }));
   out.push(el("button", { type: "button", class: "ghost", text: "Exporter en JSON", onclick: exportJSON }));
 
-  /* — Le projet Supabase, replié : il est déjà renseigné. — */
-  const url = el("input", {
-    type: "url", class: "field", id: "seturl", placeholder: "https://xxxx.supabase.co",
-    value: cfg ? cfg.url : "", "aria-label": "URL du projet Supabase", autocomplete: "off",
-  });
-  const key = el("input", {
-    type: "text", class: "field mono", id: "setkey", placeholder: "la clé publique",
-    value: cfg ? cfg.key : "", "aria-label": "Clé publique Supabase", autocomplete: "off",
-  });
-  const save = el("button", { type: "button", class: "primary", text: "Enregistrer" });
-  save.addEventListener("click", async () => {
-    try {
-      sync.setConfig(url.value, key.value);
-      await sync.start();
-      refreshSettings();
-      toast("Projet enregistré.");
-    } catch (e) {
-      toast("Échec : " + (e.message || e));
-    }
-  });
+  /* — Ce qui protège tes données. — */
+  //
+  // On n'affiche plus ni l'adresse du projet ni la clé. Non pas qu'elles
+  // soient secrètes — elles ne peuvent pas l'être, n'importe qui peut
+  // les lire dans le code d'une page web — mais parce que les montrer
+  // laissait croire qu'il fallait les cacher. Ce qui protège les
+  // données, ce sont les politiques de la base.
   out.push(el("details", { class: "fold" }, [
-    el("summary", { text: "La base de données" }),
+    el("summary", { text: "Sécurité" }),
     el("p", {
       class: "settext dim",
-      text: "Déjà renseignée. À ne changer que si tu veux pointer cet appareil "
-        + "vers un autre projet Supabase. La clé publique est faite pour être "
-        + "publique : ce sont les politiques RLS de la base qui protègent tes "
-        + "lignes, pas le secret de cette clé.",
+      text: "L'app s'adresse à la base avec une clé dite publique, faite pour "
+        + "vivre dans le code d'une page web. Ce n'est pas elle qui protège "
+        + "tes lignes : c'est le Row Level Security de la base, qui n'accorde "
+        + "chaque ligne qu'au compte qui l'a écrite. Vérifié — un visiteur non "
+        + "connecté ne lit rien et ne peut rien écrire.",
     }),
-    url, key, save,
+    el("p", {
+      class: "settext dim",
+      text: "Les inscriptions sont fermées : personne d'autre ne peut se créer "
+        + "de compte sur ce projet, même en trouvant l'adresse du site.",
+    }),
+    el("p", {
+      class: "settext dim",
+      text: "Pour pointer cet appareil vers un autre projet, change js/config.js "
+        + "et republie.",
+    }),
   ]));
 
   return out;

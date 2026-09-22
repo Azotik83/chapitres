@@ -40,6 +40,14 @@ export function render() {
   renderTags();
 }
 
+// La hauteur passe par le CSSOM et non par un attribut style : c'est ce
+// qui permet une CSP sans 'unsafe-inline' sur les styles.
+function fill(tone, pct) {
+  const i = el("i", { class: "fill " + tone });
+  i.style.height = pct + "%";
+  return i;
+}
+
 /* ── Des barres, pas une courbe ───────────────────────────────── */
 
 function renderBars(chapters, current) {
@@ -71,13 +79,11 @@ function renderBars(chapters, current) {
       onclick: () => openChapter(c.id),
     }, [
       el("div", { class: "half up" },
-        up ? [el("span", { class: "barval in", text: fmtAmount(net) }),
-              el("i", { class: "fill in", style: "height:" + pct + "%" })]
+        up ? [el("span", { class: "barval in", text: fmtAmount(net) }), fill("in", pct)]
            : [el("i", { class: "spacer" })]),
       el("div", { class: "half down" },
         up ? [el("i", { class: "spacer" })]
-           : [el("i", { class: "fill out", style: "height:" + pct + "%" }),
-              el("span", { class: "barval out", text: fmtAmount(net) })]),
+           : [fill("out", pct), el("span", { class: "barval out", text: fmtAmount(net) })]),
     ]);
     chart.appendChild(bar);
   }

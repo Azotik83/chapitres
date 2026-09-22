@@ -84,7 +84,12 @@ export async function signIn(email) {
   if (!c) throw new Error("Configure d'abord ton projet Supabase.");
   const { error } = await c.auth.signInWithOtp({
     email: String(email).trim(),
-    options: { emailRedirectTo: redirectTo() },
+    options: {
+      emailRedirectTo: redirectTo(),
+      // Les inscriptions sont fermées côté serveur ; on le dit aussi
+      // ici pour obtenir un refus clair au lieu d'un courriel muet.
+      shouldCreateUser: false,
+    },
   });
   if (error) throw error;
 }

@@ -10,6 +10,26 @@
 <meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 
+<!-- Politique de sécurité du contenu.
+     Rien ne se charge d'ailleurs que de cette page, sauf les appels à
+     Supabase. Aucun 'unsafe-inline' : pas un script ni un style en
+     ligne dans tout le projet, et el() n'expose aucun innerHTML — donc
+     même un texte piégé dans une de tes lignes ne peut pas devenir du
+     code. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self';
+  style-src 'self';
+  font-src 'self';
+  img-src 'self' blob: data:;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+  worker-src 'self';
+  manifest-src 'self';
+  base-uri 'none';
+  form-action 'none';
+  object-src 'none';
+  frame-src 'none'">
+
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">

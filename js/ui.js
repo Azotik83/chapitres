@@ -14,7 +14,6 @@ export function el(tag, props = {}, kids = []) {
     if (v === null || v === undefined || v === false) continue;
     if (k === "class") n.className = v;
     else if (k === "text") n.textContent = v;
-    else if (k === "html") n.innerHTML = v;
     else if (k === "dataset") Object.assign(n.dataset, v);
     else if (k.startsWith("on")) n.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === "disabled" || k === "hidden") n[k] = !!v;
@@ -43,7 +42,19 @@ export function textWithTags(text) {
   return frag;
 }
 
-const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.4 8.5 6.5 11.5 12.6 4.8"/></svg>';
+// Construit en DOM plutôt qu'en chaîne : el() n'expose plus aucun
+// innerHTML, donc il n'existe aucun endroit par où du texte pourrait
+// devenir du balisage.
+const SVG_NS = "http://www.w3.org/2000/svg";
+function checkMark() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", "M3.4 8.5 6.5 11.5 12.6 4.8");
+  svg.appendChild(path);
+  return svg;
+}
 
 // Une tâche a une case ; une note n'en a pas, et son texte s'aligne sur
 // la même colonne que les autres.
@@ -62,7 +73,7 @@ export function entryRow(e, { interactive = true } = {}) {
       text: fmtAmount(e.amount),
     }));
   } else if (e.kind === "t") {
-    row.appendChild(el("span", { class: "box", html: CHECK }));
+    row.appendChild(el("span", { class: "box" }, [checkMark()]));
   }
   return row;
 }
