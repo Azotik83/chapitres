@@ -3,3 +3,7 @@ Thumbs.db
 __pycache__/
 .claude/
 supabase/.temp/
+supabase/.smtp-key
+*.key
+.env
+.env.*

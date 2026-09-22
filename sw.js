@@ -9,7 +9,7 @@
 // dit aux téléphones déjà installés d'aller chercher la nouvelle.
 // ═══════════════════════════════════════════════════════════════
 
-const VERSION = "raptat-v8";
+const VERSION = "raptat-v9";
 
 const SHELL = [
   "./",
@@ -27,6 +27,8 @@ const SHELL = [
   "./js/config.js",
   "./vendor/supabase.js",
   "./icons/favicon.svg",
+  "./icons/mark.svg",
+  "./icons/wordmark.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",

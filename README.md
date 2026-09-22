@@ -108,6 +108,21 @@ automatiquement.
 
 ---
 
+## 2 bis. L'expéditeur de courriel (Resend) — *fait*
+
+Branché. L'expéditeur `onboarding@resend.dev` envoie désormais les courriels, la limite
+est passée de 2 à 30 par heure, et le gabarit porte **un code en plus du lien** — le code
+est le seul chemin qui connecte une app installée sur l'écran d'accueil d'un iPhone.
+
+**La clé Resend ne doit jamais entrer dans un fichier suivi par git.** `config.toml` ne
+déclare que `env(SMTP_PASSWORD)`. Pour rejouer la configuration :
+
+```powershell
+.\supabase\smtp.ps1 -Key "re_ta_cle"
+```
+
+La procédure d'origine, pour mémoire :
+
 ## 2 bis. L'expéditeur de courriel (Resend)
 
 Le service d'envoi intégré de Supabase plafonne à **2 courriels par heure** et

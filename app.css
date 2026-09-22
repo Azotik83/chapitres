@@ -19,15 +19,15 @@
   --bg:#EFECE6;
   --surface:#FAF8F4;
   --surface2:#F1EDE6;
-  --text:#17181B;
+  --text:#232120;   /* l'encre exacte du logo */
   --text2:#6C6B67;
   --text3:#9A9893;
   --rule:#DFDAD1;
   --accent:#22406B;
   --in:#3A6B4A;
   --out:#A63A2B;
-  --shadow:rgba(23,24,27,.12);
-  --scrim:rgba(23,24,27,.34);
+  --shadow:rgba(35,33,32,.12);
+  --scrim:rgba(35,33,32,.34);
 
   --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -648,12 +648,16 @@ img{max-width:100%}
   }
   .raillogo{
     display:block;
-    font-family:var(--mono);
-    font-size:var(--label);
-    letter-spacing:.16em;
-    text-transform:uppercase;
-    color:var(--text3);
-    padding:10px 12px 18px;
+    padding:12px 12px 20px;
+    color:var(--text);
+  }
+  /* Le logotype prend la couleur du texte : il s'inverse donc tout seul
+     en thème sombre, sans second fichier. */
+  .railmark{
+    display:block;
+    width:104px;
+    height:auto;
+    max-width:100%;
   }
   .tab{
     flex:none;
