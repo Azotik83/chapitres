@@ -99,6 +99,8 @@ export async function signOut() {
 /* ── Démarrage ────────────────────────────────────────────────── */
 
 let channel = null;
+let authSub = null;
+let wired = false;   // start() est rappelé depuis les réglages
 
 export async function start() {
   status.configured = !!getConfig();
@@ -106,16 +108,20 @@ export async function start() {
   const c = client();
   if (!c) return;
 
+  if (!wired) {
+    wired = true;
+    addEventListener("online", () => { status.online = true; emit(); sync(); });
+    addEventListener("offline", () => { status.online = false; emit(); });
+    addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
+    store.setPushHook(() => sync());
+  }
+
   const { data } = await c.auth.getSession();
   await onSession(data ? data.session : null);
 
-  c.auth.onAuthStateChange((_evt, session) => { onSession(session); });
-
-  addEventListener("online", () => { status.online = true; emit(); sync(); });
-  addEventListener("offline", () => { status.online = false; emit(); });
-  addEventListener("visibilitychange", () => { if (!document.hidden) sync(); });
-
-  store.setPushHook(() => sync());
+  if (authSub) { try { authSub.unsubscribe(); } catch { /* ignoré */ } }
+  const res = c.auth.onAuthStateChange((_evt, session) => { onSession(session); });
+  authSub = res && res.data ? res.data.subscription : null;
 }
 
 async function onSession(session) {
