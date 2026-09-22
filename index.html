@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chapitres</title>
+<meta name="description" content="Une ligne par jour, des chapitres que tu fermes toi-même, et une grille de photos pour les retrouver.">
+
+<meta name="theme-color" content="#EFECE6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chapitres">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="app">
+  <div class="stage">
+
+    <!-- ── Écran 1 — Aujourd'hui ─────────────────────────────── -->
+    <section class="screen" id="screen-today">
+      <header class="top">
+        <span class="wordmark" id="chapterlabel">Chapitre 1</span>
+        <button type="button" class="more" id="moremenu" aria-label="Réglages">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+        </button>
+      </header>
+      <div class="scroll" id="feed"></div>
+    </section>
+
+    <!-- ── Écran 2 — Chapitres ───────────────────────────────── -->
+    <section class="screen" id="screen-chapters" hidden>
+      <header class="top">
+        <span class="screentitle">Chapitres</span>
+        <span class="count" id="chaptercount"></span>
+      </header>
+      <div class="scroll">
+        <div class="grid" id="grid"></div>
+      </div>
+    </section>
+
+    <!-- ── Écran 3 — Argent ──────────────────────────────────── -->
+    <section class="screen" id="screen-money" hidden>
+      <header class="top">
+        <span class="screentitle">Argent</span>
+        <span class="count" id="moneychapter"></span>
+      </header>
+      <div class="scroll">
+        <div class="bigwrap">
+          <div class="bignum in" id="bignum">+0,00 €</div>
+          <div class="bigsub" id="bigsub"></div>
+        </div>
+        <div class="label">Par chapitre</div>
+        <div id="bars"></div>
+        <div class="label">Par projet</div>
+        <div id="tags"></div>
+      </div>
+    </section>
+
+    <!-- ── Les pages poussées (chapitre, projet, réglages) ────── -->
+    <div id="pages" hidden></div>
+  </div>
+
+  <!-- ── Le bas de l'écran : message, saisie, onglets ────────── -->
+  <div class="dock">
+    <div id="toasthost"></div>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <div class="editbar" id="editbar" hidden>
+        <span class="k">Modifier</span>
+        <button type="button" id="editCancel">Annuler</button>
+      </div>
+      <div class="cbox">
+        <textarea id="line" rows="1" placeholder="écris une ligne…"
+          enterkeyhint="send" inputmode="text" autocapitalize="sentences"
+          spellcheck="true" aria-label="Écris une ligne"></textarea>
+        <button id="send" type="submit" aria-label="Envoyer" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </div>
+    </form>
+
+    <nav class="tabs" aria-label="Navigation">
+      <button type="button" class="tab on" id="tab-today" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Aujourd'hui</span>
+      </button>
+      <button type="button" class="tab" id="tab-chapters" aria-current="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+        <span>Chapitres</span>
+      </button>
+      <button type="button" class="tab" id="tab-money" aria-current="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 6.5A6 6 0 0 0 8 9a6 6 0 0 0 9 8.5M5 10.5h8M5 13.5h8"/></svg>
+        <span>Argent</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<p id="boot">Chapitres s'ouvre…</p>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
