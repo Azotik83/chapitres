@@ -7,6 +7,8 @@ saisie, rien d'autre.
 Elle tourne **gratuitement** : la page est hébergée sur GitHub Pages, les données dans
 Supabase. Elle s'installe sur l'écran d'accueil et s'ouvre sans réseau.
 
+### → **https://azotik83.github.io/chapitres/**
+
 ---
 
 ## Ce qu'il y a dedans
@@ -28,10 +30,13 @@ avec une souris.
 
 ---
 
-## 1. Mettre la page en ligne (GitHub Pages)
+## 1. Mettre la page en ligne (GitHub Pages) — *fait*
 
-Il faut un dépôt **public** : sur un compte GitHub gratuit, Pages ne publie que ceux-là.
-Ce n'est pas un problème — le dépôt ne contient que le code de l'app, jamais tes lignes.
+C'est déjà en place : le dépôt est public et Pages sert la branche `main` à la racine.
+Le dépôt doit rester public — sur un compte GitHub gratuit, Pages ne publie que ceux-là.
+Ce n'est pas un problème : il ne contient que le code de l'app, jamais tes lignes.
+
+La procédure, pour mémoire si tu repars de zéro :
 
 1. Sur **github.com** → **New repository**. Nom : `chapitres`. Visibilité : **Public**.
    Ne coche ni README, ni .gitignore, ni licence.
@@ -39,7 +44,7 @@ Ce n'est pas un problème — le dépôt ne contient que le code de l'app, jamai
 2. Dans ce dossier, branche le dépôt et pousse (remplace `TON-PSEUDO`) :
 
    ```bash
-   git remote add origin https://github.com/TON-PSEUDO/chapitres.git
+   git remote add origin https://github.com/Azotik83/chapitres.git
    git push -u origin main
    ```
 
@@ -47,7 +52,7 @@ Ce n'est pas un problème — le dépôt ne contient que le code de l'app, jamai
    **Source** = `Deploy from a branch`, **Branch** = `main`, dossier = `/ (root)` → **Save**.
 
 4. Une minute plus tard, l'app est sur :
-   **`https://TON-PSEUDO.github.io/chapitres/`**
+   **`https://azotik83.github.io/chapitres/`**
 
 À ce stade elle marche déjà : tu peux écrire, fermer des chapitres, tout voir. Tout reste
 sur l'appareil tant que tu n'as pas fait l'étape 2.
@@ -69,7 +74,7 @@ sur l'appareil tant que tu n'as pas fait l'étape 2.
    la clé publique de l'app suffirait à lire la base de tout le monde.
 
 3. **Authentication** → **URL Configuration** :
-   - *Site URL* : `https://TON-PSEUDO.github.io/chapitres/`
+   - *Site URL* : `https://azotik83.github.io/chapitres/`
    - *Redirect URLs* : ajoute la même adresse.
 
    Sans ça, le lien reçu par courriel te renverra vers `localhost` et la connexion
