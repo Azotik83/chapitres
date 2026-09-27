@@ -6,7 +6,7 @@
 // n'y ait bien qu'un seul geste à apprendre dans toute l'app.
 // ═══════════════════════════════════════════════════════════════
 
-import { TAG_RE, fmtAmount } from "./core.js";
+import { TAG_RE, fmtAmount, labelRappel, rappelPasse } from "./core.js";
 
 export function el(tag, props = {}, kids = []) {
   const n = document.createElement(tag);
@@ -66,7 +66,16 @@ export function entryRow(e, { interactive = true } = {}) {
     role: e.kind === "t" && interactive ? "checkbox" : null,
     "aria-checked": e.kind === "t" && interactive ? (e.done ? "true" : "false") : null,
   });
-  row.appendChild(el("div", { class: "txt" }, [textWithTags(e.text)]));
+  const txt = el("div", { class: "txt" }, [textWithTags(e.text)]);
+  // Le rappel que tu as posé, sous le texte. Une fois la tâche cochée
+  // il disparaît : il n'a plus rien à dire.
+  if (e.remind_at && !e.done) {
+    txt.appendChild(el("span", {
+      class: "cue when" + (rappelPasse(e.remind_at) ? " late" : ""),
+      text: labelRappel(e.remind_at),
+    }));
+  }
+  row.appendChild(txt);
   if (e.kind === "m") {
     row.appendChild(el("span", {
       class: "amt " + (e.amount < 0 ? "out" : "in"),
@@ -179,7 +188,9 @@ export function closeSheet() {
   sheetReturn = null;
 }
 
-export function actionSheet(head, items) {
+// `corps` permet de glisser un champ dans la feuille — un sélecteur de
+// date, par exemple — sans inventer un second composant.
+export function actionSheet(head, items, { corps } = {}) {
   closeSheet();
   sheetReturn = document.activeElement;
 
@@ -187,6 +198,7 @@ export function actionSheet(head, items) {
     class: "sheet", role: "dialog", "aria-modal": "true", "aria-label": "Actions",
   });
   if (head) sheet.appendChild(el("div", { class: "sheet-head", text: head }));
+  if (corps) sheet.appendChild(el("div", { class: "sheet-corps" }, [corps]));
   for (const it of items) {
     if (!it) continue;
     sheet.appendChild(el("button", {
@@ -197,8 +209,10 @@ export function actionSheet(head, items) {
   sheetEl = el("div", { class: "scrim" }, [sheet]);
   sheetEl.addEventListener("pointerdown", (ev) => { if (ev.target === sheetEl) closeSheet(); });
   document.body.appendChild(sheetEl);
-  const first = sheet.querySelector("button");
-  if (first) first.focus();
+  // Le champ prime sur le premier bouton : s'il y en a un, c'est lui
+  // qu'on vient remplir.
+  const premier = sheet.querySelector("input, select, textarea") || sheet.querySelector("button");
+  if (premier) premier.focus();
 }
 
 /* ── Le message de confirmation, quatre secondes ──────────────── */

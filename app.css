@@ -862,3 +862,18 @@ img{max-width:100%}
   overflow-wrap:anywhere;
 }
 .row.habit.done .cue{color:var(--text3)}
+
+/* Un rappel posé sur une tâche. Même langage visuel que le déclencheur
+   d'une habitude : une ligne d'information sous le texte, en estompé.
+   Passé l'heure, il prend la couleur des dépenses — c'est un fait, pas
+   un reproche, et c'est toi qui l'avais demandé. */
+.when{font-variant-numeric:tabular-nums}
+.when.late{color:var(--out)}
+
+/* Le champ date-heure dans une feuille d'action. */
+.sheet-corps{padding:14px var(--pad) 4px}
+.field.when{
+  margin-bottom:0;
+  font-family:var(--mono);
+  font-size:15px;
+}

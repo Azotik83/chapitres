@@ -199,3 +199,42 @@ export function suggestNames(entries, chapterNumber) {
   }
   return out.slice(0, 2);
 }
+
+/* ── Les rappels ──────────────────────────────────────────────── */
+
+const MOIS_COURT = ["janv.", "févr.", "mars", "avril", "mai", "juin",
+  "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+// Ce que <input type="datetime-local"> attend : une heure LOCALE.
+// La conversion vers l'UTC est faite par le navigateur au moment de
+// l'enregistrement, pas ici.
+export function pourChampLocal(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) +
+    "T" + p2(d.getHours()) + ":" + p2(d.getMinutes());
+}
+
+// Une valeur par défaut qui tombe juste : dans une heure, arrondie aux
+// cinq minutes. Toujours dans le futur, jamais une heure saugrenue.
+export function prochainMoment() {
+  const d = new Date();
+  d.setHours(d.getHours() + 1);
+  d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0);
+  return pourChampLocal(d.toISOString());
+}
+
+export function labelRappel(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const heure = p2(d.getHours()) + ":" + p2(d.getMinutes());
+  const jour = ymd(d);
+  if (jour === today()) return "aujourd'hui " + heure;
+  if (jour === yesterday()) return "hier " + heure;
+  const dem = new Date(); dem.setDate(dem.getDate() + 1);
+  if (jour === ymd(dem)) return "demain " + heure;
+  const memeAnnee = d.getFullYear() === new Date().getFullYear();
+  return d.getDate() + " " + MOIS_COURT[d.getMonth()] +
+    (memeAnnee ? "" : " " + d.getFullYear()) + " " + heure;
+}
+
+export const rappelPasse = (iso) => !!iso && new Date(iso).getTime() <= Date.now();

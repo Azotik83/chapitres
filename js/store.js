@@ -274,6 +274,16 @@ export async function patchEntry(id, patch) {
   return saveEntry({ ...e, ...patch });
 }
 
+// Poser un rappel. reminded_at repart a zero : changer l'heure d'un
+// rappel deja parti doit le faire repartir.
+export async function setReminder(id, isoUtc) {
+  return patchEntry(id, { remind_at: isoUtc, reminded_at: null });
+}
+
+export async function clearReminder(id) {
+  return patchEntry(id, { remind_at: null, reminded_at: null });
+}
+
 export async function deleteEntry(id) {
   const e = state.entries.get(id);
   if (!e) return null;

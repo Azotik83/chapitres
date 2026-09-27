@@ -6,7 +6,8 @@
 // et nulle part ailleurs.
 // ═══════════════════════════════════════════════════════════════
 
-import { parse, reeditable, dayLabel, today as ceJour } from "./core.js";
+import { parse, reeditable, dayLabel, today as ceJour,
+  pourChampLocal, prochainMoment, labelRappel } from "./core.js";
 import * as store from "./store.js";
 import { el, clear, entryRow, habitRow, attachRowGestures, actionSheet, toast } from "./ui.js";
 
@@ -281,6 +282,39 @@ function menuHabitude(id) {
   ]);
 }
 
+// Un rappel : une date et une heure, rien d'autre.
+//
+// Le champ natif du navigateur fait le travail — sur iPhone c'est la
+// molette que tu connais déjà. Aucun sélecteur maison : ce serait plus
+// de code pour un résultat moins familier.
+function menuRappel(e) {
+  const champ = el("input", {
+    type: "datetime-local",
+    class: "field when",
+    id: "rappel-" + e.id,
+    "aria-label": "Date et heure du rappel",
+    value: e.remind_at ? pourChampLocal(e.remind_at) : prochainMoment(),
+  });
+
+  const poser = async () => {
+    if (!champ.value) return;
+    // Le champ donne une heure LOCALE ; Date la convertit en UTC.
+    const quand = new Date(champ.value);
+    if (isNaN(quand.getTime())) { toast("Date illisible."); return; }
+    await store.setReminder(e.id, quand.toISOString());
+    toast("Rappel posé " + labelRappel(quand.toISOString()) + ".");
+  };
+
+  actionSheet(e.text, [
+    { label: e.remind_at ? "Changer le rappel" : "Poser ce rappel", run: poser },
+    e.remind_at ? {
+      label: "Retirer le rappel", tone: "quiet",
+      run: async () => { await store.clearReminder(e.id); toast("Rappel retiré."); },
+    } : null,
+    { label: "Annuler", tone: "quiet" },
+  ], { corps: champ });
+}
+
 // Partagé avec la page d'un chapitre et celle d'un projet.
 export function entryMenu(e, { onEdit } = {}) {
   const head = e.kind === "m" ? e.text : e.text;
@@ -293,6 +327,13 @@ export function entryMenu(e, { onEdit } = {}) {
     e.kind === "t" ? {
       label: "Ce n'est pas une tâche",
       run: () => store.patchEntry(e.id, { kind: "n", done: false }),
+    } : null,
+    // Un rappel se pose sur ce qui attend un geste de toi — donc sur une
+    // tâche. Une note ou un montant n'a rien à rappeler ; et « Ce n'est
+    // pas une tâche » est juste au-dessus pour changer d'avis.
+    e.kind === "t" ? {
+      label: e.remind_at ? "Rappel : " + labelRappel(e.remind_at) : "Me le rappeler",
+      run: () => menuRappel(e),
     } : null,
     // Aucun nouveau geste, aucun nouveau symbole : une habitude se crée
     // depuis le menu qui existait déjà.

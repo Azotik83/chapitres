@@ -36,6 +36,11 @@ create table if not exists public.entries (
   amount      numeric(10,2) not null default 0,
   kind        char(1) not null check (kind in ('m','t','n')),
   done        boolean not null default false,
+  -- Un rappel pose sur une tache : une date et une heure, rien d'autre.
+  -- remind_at est en UTC ; c'est le navigateur qui convertit l'heure
+  -- locale saisie. reminded_at evite le double envoi.
+  remind_at   timestamptz,
+  reminded_at timestamptz,
   updated_at  timestamptz not null default now(),
   deleted_at  timestamptz                 -- pierre tombale : propage la
                                           -- suppression aux autres appareils
@@ -44,6 +49,11 @@ create table if not exists public.entries (
 create index if not exists entries_user_day_idx      on public.entries  (user_id, day desc);
 create index if not exists entries_user_updated_idx  on public.entries  (user_id, updated_at);
 create index if not exists entries_chapter_idx       on public.entries  (chapter_id);
+
+-- L'index ne porte que sur ce que le cron cherche : les rappels dus et
+-- pas encore envoyes. Il reste minuscule quoi qu'il arrive.
+create index if not exists entries_rappels_idx on public.entries (remind_at)
+  where remind_at is not null and reminded_at is null and deleted_at is null;
 create index if not exists chapters_user_updated_idx on public.chapters (user_id, updated_at);
 
 -- Volontairement NON unique sur (user_id, n).
