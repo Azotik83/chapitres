@@ -78,10 +78,40 @@ export function entryRow(e, { interactive = true } = {}) {
   return row;
 }
 
+// La ligne d'une habitude.
+//
+// Elle porte son compteur de jours — mais ce compteur n'est PAS une
+// serie : il ne se remet jamais a zero et rien ne se « casse ». Il est
+// donc ecrit en gris estompe, a cote de la case, sans emphase : c'est
+// une information, pas un score.
+export function habitRow(h, { day, ticked, days, interactive = true } = {}) {
+  const row = el("div", {
+    class: "row habit" + (ticked ? " done" : ""),
+    dataset: { habit: h.id, day },
+    tabindex: interactive ? "0" : null,
+    role: interactive ? "checkbox" : null,
+    "aria-checked": interactive ? (ticked ? "true" : "false") : null,
+  });
+  row.appendChild(el("div", { class: "txt" }, [textWithTags(h.text)]));
+  if (days) row.appendChild(el("span", { class: "hdays", text: days + " j" }));
+  row.appendChild(el("span", { class: "box" }, [checkMark()]));
+  return row;
+}
+
 /* ── Tap = cocher. Appui long (500 ms) = menu. Rien d'autre. ──── */
 
 export function attachRowGestures(container, { onTap, onHold }) {
-  let timer = null, row = null, x = 0, y = 0, fired = false;
+  let timer = null, row = null, x = 0, y = 0, fired = false, retombee = null;
+
+  // Apres un appui long, le clic que le navigateur envoie dans la foulee
+  // doit etre ignore — mais UNIQUEMENT celui-la. Sans minuterie, le
+  // drapeau restait leve et avalait le clic suivant, qui pouvait arriver
+  // une minute plus tard sur une tout autre ligne.
+  const marquerDeclenche = () => {
+    fired = true;
+    clearTimeout(retombee);
+    retombee = setTimeout(() => { fired = false; }, 700);
+  };
 
   const cancel = () => {
     clearTimeout(timer);
@@ -98,7 +128,7 @@ export function attachRowGestures(container, { onTap, onHold }) {
     fired = false;
     row = r; x = ev.clientX; y = ev.clientY;
     r.classList.add("pressing");
-    timer = setTimeout(() => { fired = true; cancel(); onHold(r.dataset.id, r); }, 500);
+    timer = setTimeout(() => { marquerDeclenche(); cancel(); onHold(r.dataset.id, r); }, 500);
   });
   container.addEventListener("pointermove", (ev) => {
     if (!timer) return;
@@ -109,10 +139,13 @@ export function attachRowGestures(container, { onTap, onHold }) {
   container.addEventListener("scroll", cancel, { passive: true });
 
   container.addEventListener("click", (ev) => {
-    if (fired) { fired = false; return; }
+    if (fired) { fired = false; clearTimeout(retombee); return; }
     const r = ev.target.closest(".row");
     if (r) onTap(r.dataset.id, r);
   });
+
+  // Les lignes d'habitude sont reconnues par leur propre attribut :
+  // onTap et onHold recoivent l'element, a chaque vue de decider.
 
   // L'équivalent de l'appui long à la souris et au clavier.
   container.addEventListener("contextmenu", (ev) => {
@@ -120,7 +153,7 @@ export function attachRowGestures(container, { onTap, onHold }) {
     if (!r) return;
     ev.preventDefault();
     cancel();
-    fired = true;
+    marquerDeclenche();
     onHold(r.dataset.id, r);
   });
   container.addEventListener("keydown", (ev) => {

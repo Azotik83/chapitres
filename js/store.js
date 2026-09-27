@@ -11,7 +11,7 @@
 import { uuid, today, tagsOf, daysBetween } from "./core.js";
 
 const DB_NAME = "chapitres";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let idb = null;
 
@@ -29,6 +29,17 @@ export function openDB() {
       if (!db.objectStoreNames.contains("chapters")) {
         const s = db.createObjectStore("chapters", { keyPath: "id" });
         s.createIndex("n", "n");
+        s.createIndex("dirty", "dirty");
+      }
+      // Les magasins portent le NOM DES TABLES : c'est ce qui rend la
+      // synchro entierement generique, sans table speciale nulle part.
+      if (!db.objectStoreNames.contains("habits")) {
+        const s = db.createObjectStore("habits", { keyPath: "id" });
+        s.createIndex("dirty", "dirty");
+      }
+      if (!db.objectStoreNames.contains("habit_ticks")) {
+        const s = db.createObjectStore("habit_ticks", { keyPath: "id" });
+        s.createIndex("habit_id", "habit_id");
         s.createIndex("dirty", "dirty");
       }
       if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos", { keyPath: "path" });
@@ -75,8 +86,15 @@ export async function kvSet(k, v) {
 export const state = {
   entries: new Map(),   // id -> ligne
   chapters: new Map(),  // id -> chapitre
+  habits: new Map(),    // id -> habitude
+  habit_ticks: new Map(),  // id -> cochage
   userId: null,
 };
+
+// Une seule table de correspondance : plus aucun endroit du code n'a
+// besoin de savoir quelles tables existent.
+export const SYNCED = ["chapters", "entries", "habits", "habit_ticks"];
+const memOf = (name) => state[name];
 
 const listeners = new Set();
 export function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -87,9 +105,10 @@ export function setPushHook(fn) { pushHook = fn; }
 function wake() { if (pushHook) pushHook(); }
 
 export async function loadAll() {
-  const [entries, chapters] = await Promise.all([all("entries"), all("chapters")]);
-  state.entries = new Map(entries.map((e) => [e.id, e]));
-  state.chapters = new Map(chapters.map((c) => [c.id, c]));
+  const lots = await Promise.all(SYNCED.map((n) => all(n)));
+  SYNCED.forEach((name, i) => {
+    state[name] = new Map(lots[i].map((r) => [r.id, r]));
+  });
 }
 
 function putLocal(store, row) {
@@ -131,6 +150,28 @@ export function entriesByDay(limitDays = 90) {
   return keys.map((day) => ({
     day,
     items: days.get(day).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
+  }));
+}
+
+// Les jours du fil = ceux qui portent une ligne ecrite, PLUS ceux ou tu
+// n'as fait que cocher une habitude. Sans cette union, une journee sans
+// un mot ecrit mais avec une habitude tenue disparaissait du fil : le
+// cochage devenait invisible dans l'historique.
+export function feedDays(limitDays = 90) {
+  const parJour = new Map();
+  for (const e of liveEntries()) {
+    if (!parJour.has(e.day)) parJour.set(e.day, []);
+    parJour.get(e.day).push(e);
+  }
+  for (const t of [...state.habit_ticks.values()]) {
+    if (t.deleted_at) continue;
+    const h = state.habits.get(t.habit_id);
+    if (!h || h.deleted_at) continue;
+    if (!parJour.has(t.day)) parJour.set(t.day, []);
+  }
+  return [...parJour.keys()].sort().reverse().slice(0, limitDays).map((day) => ({
+    day,
+    items: (parJour.get(day) || []).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
   }));
 }
 
@@ -304,6 +345,124 @@ export async function reconcileOpenChapters() {
   return moved;
 }
 
+/* ── Les habitudes ────────────────────────────────────────────── */
+//
+// Une habitude est une ligne qui revient chaque jour sans qu'on ait rien
+// a ecrire. Elle ne s'affiche QUE sur aujourd'hui : si elle apparaissait
+// aussi sur les jours passes, scroller en arriere montrerait un mur de
+// cases vides — exactement la culpabilite que le plan interdit. Les
+// jours passes ne montrent donc que ce qui a ete reellement coche.
+
+export const liveHabits = () =>
+  [...state.habits.values()]
+    .filter((h) => !h.deleted_at)
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+
+// Celles qui comptent aujourd'hui : ni ancrees, ni arretees.
+export const activeHabits = () =>
+  liveHabits().filter((h) => !h.anchored_at && !h.stopped_at);
+
+// Depuis combien de temps tu tiens l'habitude. Ce n'est PAS une serie :
+// sauter un jour ne remet rien a zero, rien ne se « casse ».
+export const habitDays = (h) => daysBetween(h.start_date, h.anchored_at || h.stopped_at || null);
+
+const liveTicks = () => [...state.habit_ticks.values()].filter((t) => !t.deleted_at);
+
+// On deduplique a la lecture : deux appareils qui cochent le meme jour
+// creent deux lignes, et c'est tres bien — mieux qu'une contrainte
+// unique qui bloquerait la synchro.
+export function isTicked(habitId, day) {
+  return liveTicks().some((t) => t.habit_id === habitId && t.day === day);
+}
+
+export function tickCount(habitId) {
+  const vus = new Set();
+  for (const t of liveTicks()) if (t.habit_id === habitId) vus.add(t.day);
+  return vus.size;
+}
+
+// Les cochages d'un jour donne, pour les afficher dans le passe.
+export function ticksOfDay(day) {
+  const parHabitude = new Map();
+  for (const t of liveTicks()) {
+    if (t.day !== day) continue;
+    const h = state.habits.get(t.habit_id);
+    if (h && !h.deleted_at) parHabitude.set(t.habit_id, h);
+  }
+  return [...parHabitude.values()];
+}
+
+export async function addHabit(text, { startDate = today() } = {}) {
+  const h = {
+    id: uuid(), user_id: state.userId,
+    text: String(text).trim(),
+    start_date: startDate,
+    anchored_at: null, stopped_at: null,
+    ask_after: 66, last_asked_on: null,
+    created_at: nowIso(), updated_at: nowIso(), deleted_at: null,
+  };
+  h.dirty = 1;
+  state.habits.set(h.id, h);
+  await putLocal("habits", h);
+  emit(); wake();
+  return h;
+}
+
+async function saveHabit(h) {
+  h.dirty = 1;
+  h.updated_at = nowIso();
+  state.habits.set(h.id, h);
+  await putLocal("habits", h);
+  emit(); wake();
+  return h;
+}
+
+export async function patchHabit(id, patch) {
+  const h = state.habits.get(id);
+  if (!h) return null;
+  return saveHabit({ ...h, ...patch });
+}
+
+export const anchorHabit = (id) => patchHabit(id, { anchored_at: today() });
+export const stopHabit   = (id) => patchHabit(id, { stopped_at: today() });
+export const deleteHabit = (id) => patchHabit(id, { deleted_at: nowIso() });
+
+// « Pas encore » : on redemande dans une semaine, pas avant.
+export const snoozeHabit = (id) => patchHabit(id, { last_asked_on: today() });
+
+export async function toggleTick(habitId, day = today()) {
+  const existants = liveTicks().filter((t) => t.habit_id === habitId && t.day === day);
+  if (existants.length) {
+    // Decocher : on pose une pierre tombale sur TOUS les doublons.
+    for (const t of existants) {
+      const mort = { ...t, deleted_at: nowIso(), dirty: 1, updated_at: nowIso() };
+      state.habit_ticks.set(mort.id, mort);
+      await putLocal("habit_ticks", mort);
+    }
+    emit(); wake();
+    return false;
+  }
+  const t = {
+    id: uuid(), user_id: state.userId, habit_id: habitId, day,
+    created_at: nowIso(), updated_at: nowIso(), deleted_at: null, dirty: 1,
+  };
+  state.habit_ticks.set(t.id, t);
+  await putLocal("habit_ticks", t);
+  emit(); wake();
+  return true;
+}
+
+// Les habitudes qui ont atteint leur seuil et qu'il faut questionner.
+// Une fois la question posee, on ne la repose qu'une semaine plus tard.
+export function habitsToAsk() {
+  const t = today();
+  return activeHabits().filter((h) => {
+    if (habitDays(h) < (h.ask_after || 66)) return false;
+    if (!h.last_asked_on) return true;
+    return daysBetween(h.last_asked_on, t) > 7;
+  });
+}
+
 /* ── Photos ───────────────────────────────────────────────────── */
 
 export async function putPhoto(path, blob) {
@@ -338,12 +497,12 @@ export function dirtyPhotos() {
 /* ── L'outbox ─────────────────────────────────────────────────── */
 
 export const dirtyRows = (store) =>
-  [...(store === "entries" ? state.entries : state.chapters).values()].filter((r) => r.dirty === 1);
+  [...memOf(store).values()].filter((r) => r.dirty === 1);
 
 export async function markClean(store, rows) {
   const t = tx([store], "readwrite");
   const os = t.objectStore(store);
-  const mem = store === "entries" ? state.entries : state.chapters;
+  const mem = memOf(store);
   for (const row of rows) {
     const cur = mem.get(row.id);
     // Si la ligne a rebougé pendant l'envoi, elle reste sale.
@@ -358,7 +517,7 @@ export async function markClean(store, rows) {
 // sale, auquel cas c'est lui qui partira au prochain envoi.
 export async function applyRemote(store, rows) {
   if (!rows.length) return 0;
-  const mem = store === "entries" ? state.entries : state.chapters;
+  const mem = memOf(store);
   const t = tx([store], "readwrite");
   const os = t.objectStore(store);
   let n = 0;
@@ -379,20 +538,21 @@ export async function applyRemote(store, rows) {
 // n'ont pas de user_id : on les adopte.
 export async function adoptOrphans(userId) {
   const fix = [];
-  for (const m of [state.entries, state.chapters])
-    for (const r of m.values()) if (!r.user_id) { r.user_id = userId; r.dirty = 1; fix.push(r); }
+  for (const name of SYNCED)
+    for (const r of memOf(name).values())
+      if (!r.user_id) { r.user_id = userId; r.dirty = 1; fix.push([name, r]); }
   if (!fix.length) return 0;
-  const t = tx(["entries", "chapters"], "readwrite");
-  for (const r of fix) t.objectStore(state.entries.has(r.id) ? "entries" : "chapters").put(r);
+  const t = tx(SYNCED, "readwrite");
+  for (const [name, r] of fix) t.objectStore(name).put(r);
   await done(t);
   return fix.length;
 }
 
 export async function wipeLocal() {
-  const t = tx(["entries", "chapters", "photos", "kv"], "readwrite");
-  for (const s of ["entries", "chapters", "photos", "kv"]) t.objectStore(s).clear();
+  const noms = SYNCED.concat(["photos", "kv"]);
+  const t = tx(noms, "readwrite");
+  for (const n of noms) t.objectStore(n).clear();
   await done(t);
-  state.entries.clear();
-  state.chapters.clear();
+  for (const n of SYNCED) memOf(n).clear();
   emit();
 }

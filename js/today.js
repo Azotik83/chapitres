@@ -6,9 +6,9 @@
 // et nulle part ailleurs.
 // ═══════════════════════════════════════════════════════════════
 
-import { parse, reeditable, dayLabel } from "./core.js";
+import { parse, reeditable, dayLabel, today as ceJour } from "./core.js";
 import * as store from "./store.js";
-import { el, clear, entryRow, attachRowGestures, actionSheet, toast } from "./ui.js";
+import { el, clear, entryRow, habitRow, attachRowGestures, actionSheet, toast } from "./ui.js";
 
 let feed, composer, input, sendBtn, editbar, chapterLabel;
 let editing = null;   // {id} quand la barre sert à modifier une ligne
@@ -29,7 +29,18 @@ export function mount() {
   });
   document.getElementById("editCancel").addEventListener("click", () => { stopEditing(); input.focus(); });
 
-  attachRowGestures(feed, { onTap: toggle, onHold: openMenu });
+  attachRowGestures(feed, {
+    onTap: (id, row) => {
+      const hid = row && row.dataset.habit;
+      if (hid) { store.toggleTick(hid, row.dataset.day || ceJour()); return; }
+      toggle(id);
+    },
+    onHold: (id, row) => {
+      const hid = row && row.dataset.habit;
+      if (hid) { menuHabitude(hid); return; }
+      openMenu(id);
+    },
+  });
   grow();
 }
 
@@ -50,10 +61,15 @@ export function render() {
       : "Chapitre 1";
   }
 
-  const days = store.entriesByDay(90);
+  const days = store.feedDays(90);
+  const habitudes = store.activeHabits();
+  const aujourdhui = ceJour();
   clear(feed);
 
-  if (!days.length) {
+  // La question des 66 jours, tout en haut — elle n'empêche pas d'écrire.
+  for (const h of store.habitsToAsk()) feed.appendChild(carteQuestion(h));
+
+  if (!days.length && !habitudes.length) {
     // Un état vide est une phrase écrite et un curseur déjà placé.
     feed.appendChild(el("p", {
       class: "blank",
@@ -62,13 +78,64 @@ export function render() {
     return;
   }
 
-  for (const group of days) {
+  // Le jour d'aujourd'hui existe dès qu'une habitude existe, même sans
+  // une seule ligne écrite : c'est tout l'intérêt d'une habitude.
+  const groupes = days.slice();
+  if (habitudes.length && !groupes.some((g) => g.day === aujourdhui)) {
+    groupes.unshift({ day: aujourdhui, items: [] });
+  }
+
+  for (const group of groupes) {
     const sec = el("section", { class: "day" }, [
       el("h2", { class: "daylabel", text: dayLabel(group.day) }),
     ]);
+
+    if (group.day === aujourdhui) {
+      // En tête du jour : c'est pour elles qu'on ouvre l'app.
+      for (const h of habitudes) {
+        sec.appendChild(habitRow(h, {
+          day: aujourdhui,
+          ticked: store.isTicked(h.id, aujourdhui),
+          days: store.habitDays(h),
+        }));
+      }
+    } else {
+      // Dans le passé, on ne montre QUE ce qui a été réellement coché.
+      // Une case vide sur un jour ancien ne serait qu'un reproche.
+      for (const h of store.ticksOfDay(group.day)) {
+        sec.appendChild(habitRow(h, { day: group.day, ticked: true, days: 0, interactive: false }));
+      }
+    }
+
     for (const e of group.items) sec.appendChild(entryRow(e));
     feed.appendChild(sec);
   }
+}
+
+/* ── La question des 66 jours ─────────────────────────────────── */
+
+function carteQuestion(h) {
+  const j = store.habitDays(h);
+  return el("div", { class: "ask" }, [
+    el("p", { class: "askwhat", text: h.text }),
+    el("p", { class: "askwhen", text: j + " jours · est-elle ancrée ?" }),
+    el("div", { class: "askrow" }, [
+      el("button", {
+        type: "button", class: "yes", text: "Elle est ancrée",
+        onclick: async () => {
+          await store.anchorHabit(h.id);
+          toast("Ancrée. Elle quitte le quotidien, l'historique reste.");
+        },
+      }),
+      el("button", {
+        type: "button", text: "Pas encore",
+        onclick: async () => {
+          await store.snoozeHabit(h.id);
+          toast("On en reparle dans une semaine.");
+        },
+      }),
+    ]),
+  ]);
 }
 
 /* ── Écrire ───────────────────────────────────────────────────── */
@@ -143,6 +210,38 @@ export function openMenu(id) {
   entryMenu(e, { onEdit: () => startEditing(id) });
 }
 
+// Le menu d'une habitude. Une habitude se termine de deux façons, et
+// les deux sont des réussites : elle est ancrée, ou tu l'arrêtes.
+function menuHabitude(id) {
+  const h = store.state.habits.get(id);
+  if (!h) return;
+  const j = store.habitDays(h);
+  actionSheet(h.text + "  ·  " + j + " j", [
+    {
+      label: "Elle est ancrée",
+      run: async () => {
+        await store.anchorHabit(id);
+        toast("Ancrée. Elle quitte le quotidien, l'historique reste.");
+      },
+    },
+    {
+      label: "Arrêter cette habitude",
+      run: async () => {
+        await store.stopHabit(id);
+        toast("Arrêtée.");
+      },
+    },
+    {
+      label: "Supprimer", tone: "danger",
+      run: async () => {
+        await store.deleteHabit(id);
+        toast("Habitude supprimée", () => store.patchHabit(id, { deleted_at: null }));
+      },
+    },
+    { label: "Annuler", tone: "quiet" },
+  ]);
+}
+
 // Partagé avec la page d'un chapitre et celle d'un projet.
 export function entryMenu(e, { onEdit } = {}) {
   const head = e.kind === "m" ? e.text : e.text;
@@ -155,6 +254,16 @@ export function entryMenu(e, { onEdit } = {}) {
     e.kind === "t" ? {
       label: "Ce n'est pas une tâche",
       run: () => store.patchEntry(e.id, { kind: "n", done: false }),
+    } : null,
+    // Aucun nouveau geste, aucun nouveau symbole : une habitude se crée
+    // depuis le menu qui existait déjà.
+    e.kind === "t" ? {
+      label: "En faire une habitude",
+      run: async () => {
+        await store.addHabit(e.text);
+        await store.deleteEntry(e.id);
+        toast("Habitude créée. Elle revient chaque jour.");
+      },
     } : null,
     onEdit ? { label: "Modifier le texte", run: onEdit } : null,
     {

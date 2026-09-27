@@ -129,9 +129,82 @@ begin
   end;
 end $$;
 
+-- ════════════════════════════════════════════════════════════════
+-- Les habitudes
+--
+-- Une habitude est une ligne qui revient chaque jour sans qu'on ait
+-- rien a ecrire. Son compteur n'est PAS une serie : il ne se remet
+-- jamais a zero, il ne se « casse » pas. Il existe pour que l'habitude
+-- puisse etre supprimee une fois ancree — c'est un compteur qui vise
+-- sa propre fin.
+-- ════════════════════════════════════════════════════════════════
+
+create table if not exists public.habits (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users on delete cascade,
+  text        text not null,
+  start_date  date not null,
+  anchored_at date,          -- ancree : elle quitte le quotidien, l'historique reste
+  stopped_at  date,          -- arretee sans avoir ete ancree
+  ask_after   int  not null default 66,   -- le seuil de la question
+  last_asked_on date,        -- pour redemander une fois par semaine
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  deleted_at  timestamptz
+);
+
+-- Un cochage. La PRESENCE de la ligne vaut « fait » ; decocher pose une
+-- pierre tombale. Volontairement SANS index unique sur (habit_id, day) :
+-- un doublon est un defaut d'affichage qu'on deduplique a la lecture,
+-- alors qu'une contrainte violee bloquerait toute la synchro.
+create table if not exists public.habit_ticks (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users on delete cascade,
+  habit_id    uuid not null references public.habits(id) on delete cascade,
+  day         date not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  deleted_at  timestamptz
+);
+
+create index if not exists habits_user_updated_idx on public.habits (user_id, updated_at);
+create index if not exists ticks_user_updated_idx  on public.habit_ticks (user_id, updated_at);
+create index if not exists ticks_habit_day_idx     on public.habit_ticks (habit_id, day);
+
+-- updated_at tenu par la base, en clock_timestamp() pour que deux lignes
+-- d'un meme envoi groupe n'aient pas le meme horodatage.
+drop trigger if exists habits_touch on public.habits;
+create trigger habits_touch before insert or update on public.habits
+  for each row execute function public.touch_updated_at();
+
+drop trigger if exists ticks_touch on public.habit_ticks;
+create trigger ticks_touch before insert or update on public.habit_ticks
+  for each row execute function public.touch_updated_at();
+
+-- ── Row Level Security ──────────────────────────────────────────
+alter table public.habits      enable row level security;
+alter table public.habit_ticks enable row level security;
+
+drop policy if exists "mes habitudes" on public.habits;
+create policy "mes habitudes" on public.habits
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "mes cochages" on public.habit_ticks;
+create policy "mes cochages" on public.habit_ticks
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ── Temps reel ──────────────────────────────────────────────────
+do $$
+begin
+  begin alter publication supabase_realtime add table public.habits;      exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.habit_ticks; exception when duplicate_object then null; end;
+end $$;
+
 -- ── Vérification ────────────────────────────────────────────────
 -- Les deux lignes suivantes doivent rendre rowsecurity = true.
 -- Si ce n'est pas le cas, ne mets pas l'app en ligne.
 select relname, relrowsecurity as rls_active
 from pg_class
-where relname in ('entries', 'chapters');
+where relname in ('entries', 'chapters', 'habits', 'habit_ticks');

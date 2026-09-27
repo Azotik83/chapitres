@@ -802,3 +802,51 @@ img{max-width:100%}
   text-align:center;
   font-variant-numeric:tabular-nums;
 }
+
+/* ── Les habitudes ────────────────────────────────────────────── */
+/* Le compteur dit depuis quand tu tiens l'habitude. Ce n'est pas une
+   série : il ne se remet jamais à zéro, rien ne se « casse ». Il est
+   donc écrit en estompé, sans emphase — une information, pas un score.
+   Aucune flamme, aucun « ne casse pas la chaîne ». */
+
+.hdays{
+  font-family:var(--mono);
+  font-size:var(--label);
+  letter-spacing:.1em;
+  color:var(--text3);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.row.habit{grid-template-columns:1fr auto auto;gap:12px}
+.row.habit .txt{color:var(--text2)}
+.row.habit.done .txt{color:var(--text)}
+
+/* ── La question des 66 jours ─────────────────────────────────── */
+/* Elle n'empêche pas d'écrire : c'est une carte dans le fil, pas un
+   écran qui barre la route. */
+
+.ask{
+  margin:18px 0 4px;
+  padding:16px;
+  border:1px solid var(--rule);
+  border-radius:12px;
+  background:var(--surface2);
+}
+.askwhat{font-size:var(--line);margin:0 0 2px}
+.askwhen{
+  font-family:var(--mono);font-size:var(--label);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--text3);
+  margin:0 0 14px;
+}
+.askrow{display:flex;flex-wrap:wrap;gap:8px}
+.askrow button{
+  min-height:44px;padding:0 14px;
+  border:1px solid var(--rule);border-radius:22px;
+  background:none;color:var(--text);
+  font:400 14px var(--sans);cursor:pointer;
+}
+.askrow button.yes{border-color:var(--accent);color:var(--accent)}
+.askrow button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){
+  .askrow button:hover{background:var(--surface)}
+}

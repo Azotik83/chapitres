@@ -219,14 +219,13 @@ function subscribeLive(userId) {
   if (!c) return;
   unsubscribeLive();
   try {
-    channel = c.channel("chapitres")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "entries", filter: `user_id=eq.${userId}` },
-        () => sync())
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "chapters", filter: `user_id=eq.${userId}` },
-        () => sync())
-      .subscribe();
+    channel = c.channel("raptat");
+    for (const table of store.SYNCED) {
+      channel = channel.on("postgres_changes",
+        { event: "*", schema: "public", table, filter: `user_id=eq.${userId}` },
+        () => sync());
+    }
+    channel.subscribe();
   } catch { /* le temps réel est un confort, pas une dépendance */ }
 }
 
@@ -258,13 +257,18 @@ export async function sync() {
     // connecter, l'inverse ferait partir son chapitre local sans qu'il
     // sache qu'un chapitre est déjà ouvert ailleurs — et l'envoi
     // échouerait, en bloquant tout le reste derrière lui.
+    // L'ordre suit les clés étrangères : un cochage référence son
+    // habitude, une ligne référence son chapitre.
     await pullTable("chapters");
     await pullTable("entries");
+    await pullTable("habits");
+    await pullTable("habit_ticks");
     await store.reconcileOpenChapters();
 
-    // Les chapitres d'abord à l'envoi : une ligne référence son chapitre.
     await pushTable("chapters");
     await pushTable("entries");
+    await pushTable("habits");
+    await pushTable("habit_ticks");
     await pushPhotos();
     await fetchMissingPhotos();
     status.lastSync = Date.now();
@@ -314,6 +318,9 @@ function relancerTempsReel() {
 const OUT = {
   entries: ["id", "user_id", "chapter_id", "day", "created_at", "text", "amount", "kind", "done", "deleted_at"],
   chapters: ["id", "user_id", "n", "name", "photo_path", "line", "start_date", "end_date", "net", "deleted_at"],
+  habits: ["id", "user_id", "text", "start_date", "anchored_at", "stopped_at",
+           "ask_after", "last_asked_on", "created_at", "deleted_at"],
+  habit_ticks: ["id", "user_id", "habit_id", "day", "created_at", "deleted_at"],
 };
 
 async function pushTable(table) {
