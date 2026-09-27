@@ -202,6 +202,37 @@ begin
   begin alter publication supabase_realtime add table public.habit_ticks; exception when duplicate_object then null; end;
 end $$;
 
+-- ════════════════════════════════════════════════════════════════
+-- Les notifications
+--
+-- Une seule sorte existe : la question des 66 jours. Pas de rappel
+-- quotidien — c'est ce que la regle 10 du plan interdit.
+-- ════════════════════════════════════════════════════════════════
+
+create table if not exists public.push_subscriptions (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users on delete cascade,
+  endpoint   text not null unique,
+  p256dh     text not null,
+  auth       text not null,
+  label      text,
+  created_at timestamptz not null default now(),
+  last_ok_at timestamptz,
+  failures   int not null default 0
+);
+create index if not exists push_user_idx on public.push_subscriptions (user_id);
+
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "mes abonnements" on public.push_subscriptions;
+create policy "mes abonnements" on public.push_subscriptions
+  for all to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- La notification a son propre rythme, SEPARE de la question posee dans
+-- l'app : si on partageait last_asked_on, un push ignore ferait taire la
+-- carte dans l'app pendant une semaine — or c'est elle le canal fiable.
+alter table public.habits add column if not exists last_push_on date;
+
 -- ── Vérification ────────────────────────────────────────────────
 -- Les deux lignes suivantes doivent rendre rowsecurity = true.
 -- Si ce n'est pas le cas, ne mets pas l'app en ligne.

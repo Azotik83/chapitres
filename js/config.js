@@ -17,6 +17,12 @@
 // passe au-dessus de toutes les politiques.
 // ═══════════════════════════════════════════════════════════════
 
+// La clé publique VAPID des notifications. Publique par définition :
+// c'est elle qui voyage dans l'abonnement push. La clé privée, elle,
+// ne vit que dans les secrets de la fonction Supabase.
+export const VAPID_PUBLIC_KEY =
+  "BLPsnmYByC4ziAZ-lo7HdjL4T5HIGLQ8-9rz0BlZqxHbN7PJSfbZRANsDTj2oMVYlYo83rw8mMCa03cu5Gr6bp4";
+
 export const DEFAULT_CONFIG = {
   url: "https://ziskwkobxfikcbybinny.supabase.co",
   key: "sb_publishable_VVq1y1cnwIZuwMxnQ6-EgQ_5lbyl6Gk",

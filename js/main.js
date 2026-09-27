@@ -8,6 +8,7 @@
 import { today } from "./core.js";
 import * as store from "./store.js";
 import * as sync from "./sync.js";
+import * as push from "./push.js";
 import * as todayView from "./today.js";
 import * as chaptersView from "./chapters.js";
 import * as moneyView from "./money.js";
@@ -237,6 +238,12 @@ function settingsBody() {
     out.push(el("p", { class: "settext dim", text: "Dernière erreur : " + s.error }));
   }
 
+  /* — Les notifications — */
+  // Une seule sorte existe : la question des 66 jours. On le dit, pour
+  // que personne n'attende un rappel quotidien qui ne viendra jamais.
+  out.push(el("div", { class: "label", text: "Notifications" }));
+  out.push(blocNotifications());
+
   /* — Tes données — */
   out.push(el("div", { class: "label", text: "Tes données" }));
   out.push(el("p", {
@@ -290,6 +297,67 @@ function renderSignin() {
   document.getElementById("signintext").textContent =
     sync.getConfig() ? "Tes lignes restent sur cet appareil." : "Aucune base branchée.";
   bar.hidden = false;
+}
+
+function blocNotifications() {
+  const boite = el("div");
+  const dire = (texte, bouton) => {
+    clear(boite);
+    boite.appendChild(el("p", { class: "settext", text: texte }));
+    if (bouton) boite.appendChild(bouton);
+  };
+
+  dire("Vérification…");
+
+  push.etat().then((e) => {
+    if (e.code === "a-installer") {
+      dire("Sur iPhone, les notifications n'existent que pour l'app ajoutée à "
+        + "l'écran d'accueil. Ouvre cette adresse dans Safari, Partager → "
+        + "Sur l'écran d'accueil, puis reviens ici.");
+      return;
+    }
+    if (e.code === "impossible") {
+      dire("Cet appareil ne sait pas recevoir de notifications web.");
+      return;
+    }
+    if (e.code === "refuse") {
+      dire("Tu as refusé les notifications pour ce site. Il faut les "
+        + "réautoriser dans les réglages du navigateur — une page web ne "
+        + "peut pas redemander une fois qu'on a dit non.");
+      return;
+    }
+    if (e.code === "actif") {
+      const b = el("button", { type: "button", class: "ghost", text: "Ne plus recevoir" });
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        try { await push.desactiver(); toast("Notifications coupées."); refreshSettings(); }
+        catch (err) { toast("Échec : " + (err.message || err)); b.disabled = false; }
+      });
+      dire("Cet appareil recevra la question quand une habitude atteindra son "
+        + "seuil. Rien d'autre : aucun rappel quotidien.", b);
+      return;
+    }
+    const b = el("button", { type: "button", class: "primary", text: "Activer sur cet appareil" });
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      const avant = b.textContent;
+      b.textContent = "Demande…";
+      try {
+        await push.activer();
+        toast("Notifications activées.");
+        refreshSettings();
+      } catch (err) {
+        toast("Échec : " + (err.message || err));
+        b.textContent = avant;
+        b.disabled = false;
+      }
+    });
+    dire("Une seule notification existe : quand une habitude atteint son seuil, "
+      + "l'app te demande si elle est ancrée. Puis une fois par semaine tant "
+      + "que tu n'as pas répondu. Aucun rappel quotidien.", b);
+  });
+
+  return boite;
 }
 
 function exportJSON() {

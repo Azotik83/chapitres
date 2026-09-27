@@ -9,7 +9,7 @@
 // dit aux téléphones déjà installés d'aller chercher la nouvelle.
 // ═══════════════════════════════════════════════════════════════
 
-const VERSION = "raptat-v11";
+const VERSION = "raptat-v12";
 
 const SHELL = [
   "./",
@@ -25,6 +25,7 @@ const SHELL = [
   "./js/chapters.js",
   "./js/money.js",
   "./js/config.js",
+  "./js/push.js",
   "./vendor/supabase.js",
   "./icons/favicon.svg",
   "./icons/mark.svg",
@@ -97,5 +98,43 @@ self.addEventListener("fetch", (ev) => {
       return res;
     }).catch(() => null);
     return cached || (await network) || new Response("", { status: 504 });
+  })());
+});
+
+
+/* ── Les notifications ────────────────────────────────────────── */
+// Une seule sorte de notification existe : la question des 66 jours.
+// Pas de rappel quotidien, pas de relance — c'est ce que la règle 10 du
+// plan interdit, et c'est la première chose qu'on finit par éteindre.
+
+self.addEventListener("push", (ev) => {
+  let d = {};
+  try { d = ev.data ? ev.data.json() : {}; }
+  catch { d = { corps: ev.data ? ev.data.text() : "" }; }
+
+  ev.waitUntil(self.registration.showNotification(d.titre || "RAPTAT", {
+    body: d.corps || "",
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    lang: "fr",
+    // Un seul fil : une question qui remplace la précédente plutôt que
+    // de s'empiler sur l'écran de verrouillage.
+    tag: "raptat-habitude",
+    renotify: false,
+    data: { url: d.url || "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", (ev) => {
+  ev.notification.close();
+  const url = (ev.notification.data && ev.notification.data.url) || "./";
+  ev.waitUntil((async () => {
+    // Si l'app est déjà ouverte quelque part, on y revient au lieu d'en
+    // ouvrir une deuxième.
+    const fenetres = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const f of fenetres) {
+      if ("focus" in f) return f.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
   })());
 });
