@@ -850,3 +850,15 @@ img{max-width:100%}
 @media (hover:hover) and (pointer:fine){
   .askrow button:hover{background:var(--surface)}
 }
+
+/* Le déclencheur d'une habitude — « après le café ».
+   Un contexte, pas une heure ni un rappel. Il vit sous le texte, en
+   estompé : il informe, il ne commande pas. */
+.cue{
+  display:block;
+  font-size:12.5px;
+  color:var(--text3);
+  margin-top:2px;
+  overflow-wrap:anywhere;
+}
+.row.habit.done .cue{color:var(--text3)}

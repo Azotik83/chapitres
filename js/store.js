@@ -392,10 +392,12 @@ export function ticksOfDay(day) {
   return [...parHabitude.values()];
 }
 
-export async function addHabit(text, { startDate = today() } = {}) {
+export async function addHabit(text, { startDate = today(), cue = null } = {}) {
   const h = {
     id: uuid(), user_id: state.userId,
     text: String(text).trim(),
+    // Le declencheur : un CONTEXTE, pas une heure. « apres le cafe ».
+    cue: cue ? String(cue).trim() : null,
     start_date: startDate,
     anchored_at: null, stopped_at: null,
     ask_after: 66, last_asked_on: null,

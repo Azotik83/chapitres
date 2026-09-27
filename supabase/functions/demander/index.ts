@@ -85,8 +85,10 @@ Deno.serve(async (req) => {
       .eq("user_id", userId);
     if (!abos || !abos.length) continue;
 
+    // La durée ne définit pas une habitude : l'automaticité, si. On pose
+    // donc la même question que la carte dans l'app, mot pour mot.
     const corps = liste.length === 1
-      ? `${jours(liste[0].start_date)} jours. Est-elle ancrée ?`
+      ? `${jours(liste[0].start_date)} jours. Tu le fais sans y penser ?`
       : `${liste.length} habitudes ont passé leur seuil.`;
     const titre = liste.length === 1 ? liste[0].text : "Tes habitudes";
 

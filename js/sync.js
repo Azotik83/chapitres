@@ -318,7 +318,7 @@ function relancerTempsReel() {
 const OUT = {
   entries: ["id", "user_id", "chapter_id", "day", "created_at", "text", "amount", "kind", "done", "deleted_at"],
   chapters: ["id", "user_id", "n", "name", "photo_path", "line", "start_date", "end_date", "net", "deleted_at"],
-  habits: ["id", "user_id", "text", "start_date", "anchored_at", "stopped_at",
+  habits: ["id", "user_id", "text", "cue", "start_date", "anchored_at", "stopped_at",
            "ask_after", "last_asked_on", "created_at", "deleted_at"],
   habit_ticks: ["id", "user_id", "habit_id", "day", "created_at", "deleted_at"],
 };

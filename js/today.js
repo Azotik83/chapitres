@@ -12,6 +12,7 @@ import { el, clear, entryRow, habitRow, attachRowGestures, actionSheet, toast } 
 
 let feed, composer, input, sendBtn, editbar, chapterLabel;
 let editing = null;   // {id} quand la barre sert à modifier une ligne
+let cueFor = null;    // {id} quand elle sert à noter un déclencheur
 
 export function mount() {
   feed = document.getElementById("feed");
@@ -25,7 +26,7 @@ export function mount() {
   input.addEventListener("input", grow);
   input.addEventListener("keydown", (ev) => {
     if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); submit(); }
-    else if (ev.key === "Escape" && editing) stopEditing();
+    else if (ev.key === "Escape" && (editing || cueFor)) stopEditing();
   });
   document.getElementById("editCancel").addEventListener("click", () => { stopEditing(); input.focus(); });
 
@@ -118,10 +119,10 @@ function carteQuestion(h) {
   const j = store.habitDays(h);
   return el("div", { class: "ask" }, [
     el("p", { class: "askwhat", text: h.text }),
-    el("p", { class: "askwhen", text: j + " jours · est-elle ancrée ?" }),
+    el("p", { class: "askwhen", text: j + " jours · tu le fais sans y penser ?" }),
     el("div", { class: "askrow" }, [
       el("button", {
-        type: "button", class: "yes", text: "Elle est ancrée",
+        type: "button", class: "yes", text: "Oui, sans y penser",
         onclick: async () => {
           await store.anchorHabit(h.id);
           toast("Ancrée. Elle quitte le quotidien, l'historique reste.");
@@ -148,6 +149,17 @@ function grow() {
 
 async function submit() {
   const raw = input.value.trim();
+
+  // Le déclencheur d'une habitude. Envoyer à vide l'efface — c'est la
+  // façon la plus simple de revenir en arrière.
+  if (cueFor) {
+    const id = cueFor.id;
+    stopEditing();
+    await store.patchHabit(id, { cue: raw || null });
+    toast(raw ? "Déclencheur noté." : "Déclencheur retiré.");
+    return;
+  }
+
   if (!raw) return;
 
   if (editing) {
@@ -189,10 +201,30 @@ function startEditing(id) {
   try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* ignoré */ }
 }
 
+// La barre sert à noter le contexte qui déclenchera l'habitude.
+// « après le café », « en sortant du studio » — pas une heure : c'est un
+// repère dans la journée, pas une alarme.
+function startCue(id) {
+  const h = store.state.habits.get(id);
+  if (!h) return;
+  editing = null;
+  cueFor = { id };
+  editbar.hidden = false;
+  editbar.querySelector(".k").textContent = "Quand ?";
+  input.value = h.cue || "";
+  input.placeholder = "après le café, en sortant…";
+  grow();
+  input.focus();
+  try { input.setSelectionRange(input.value.length, input.value.length); } catch { /* ignoré */ }
+}
+
 function stopEditing() {
   editing = null;
+  cueFor = null;
   editbar.hidden = true;
+  editbar.querySelector(".k").textContent = "Modifier";
   input.value = "";
+  input.placeholder = "écris une ligne…";
   grow();
 }
 
@@ -218,7 +250,14 @@ function menuHabitude(id) {
   const j = store.habitDays(h);
   actionSheet(h.text + "  ·  " + j + " j", [
     {
-      label: "Elle est ancrée",
+      label: h.cue ? "Changer le déclencheur" : "Quand le fais-tu ?",
+      run: () => startCue(id),
+    },
+    // La durée ne définit pas une habitude : l'automaticité, si. C'est
+    // ce que mesurent les instruments validés du domaine, et c'est une
+    // question à laquelle on peut répondre honnêtement.
+    {
+      label: "Je le fais sans y penser",
       run: async () => {
         await store.anchorHabit(id);
         toast("Ancrée. Elle quitte le quotidien, l'historique reste.");
@@ -260,9 +299,12 @@ export function entryMenu(e, { onEdit } = {}) {
     e.kind === "t" ? {
       label: "En faire une habitude",
       run: async () => {
-        await store.addHabit(e.text);
+        const h = await store.addHabit(e.text);
         await store.deleteEntry(e.id);
         toast("Habitude créée. Elle revient chaque jour.");
+        // Le déclencheur se note au moment de l'engagement, c'est là
+        // qu'il vaut quelque chose. Échap suffit à l'ignorer.
+        startCue(h.id);
       },
     } : null,
     onEdit ? { label: "Modifier le texte", run: onEdit } : null,

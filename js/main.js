@@ -334,7 +334,8 @@ function blocNotifications() {
         catch (err) { toast("Échec : " + (err.message || err)); b.disabled = false; }
       });
       dire("Cet appareil recevra la question quand une habitude atteindra son "
-        + "seuil. Rien d'autre : aucun rappel quotidien.", b);
+        + "seuil — la fais-tu sans y penser ? Rien d'autre : aucun rappel "
+        + "quotidien.", b);
       return;
     }
     const b = el("button", { type: "button", class: "primary", text: "Activer sur cet appareil" });
@@ -353,8 +354,8 @@ function blocNotifications() {
       }
     });
     dire("Une seule notification existe : quand une habitude atteint son seuil, "
-      + "l'app te demande si elle est ancrée. Puis une fois par semaine tant "
-      + "que tu n'as pas répondu. Aucun rappel quotidien.", b);
+      + "l'app te demande si tu le fais sans y penser. Puis une fois par "
+      + "semaine tant que tu n'as pas répondu. Aucun rappel quotidien.", b);
   });
 
   return boite;

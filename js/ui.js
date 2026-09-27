@@ -92,7 +92,11 @@ export function habitRow(h, { day, ticked, days, interactive = true } = {}) {
     role: interactive ? "checkbox" : null,
     "aria-checked": interactive ? (ticked ? "true" : "false") : null,
   });
-  row.appendChild(el("div", { class: "txt" }, [textWithTags(h.text)]));
+  const txt = el("div", { class: "txt" }, [textWithTags(h.text)]);
+  // Le declencheur vit sous le texte, en estompe : c'est un rappel de
+  // contexte, pas une consigne.
+  if (h.cue) txt.appendChild(el("span", { class: "cue", text: h.cue }));
+  row.appendChild(txt);
   if (days) row.appendChild(el("span", { class: "hdays", text: days + " j" }));
   row.appendChild(el("span", { class: "box" }, [checkMark()]));
   return row;

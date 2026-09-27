@@ -143,6 +143,11 @@ create table if not exists public.habits (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users on delete cascade,
   text        text not null,
+  -- Le declencheur : « apres le cafe », « en sortant du studio ». Ni une
+  -- heure ni un rappel — un CONTEXTE. C'est l'intention d'implementation
+  -- de Gollwitzer, et elle agit la ou l'app etait faible : elle aidait a
+  -- tenir une habitude, pas a la declencher.
+  cue         text,
   start_date  date not null,
   anchored_at date,          -- ancree : elle quitte le quotidien, l'historique reste
   stopped_at  date,          -- arretee sans avoir ete ancree
